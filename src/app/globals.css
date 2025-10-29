@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* 🌞 Light Theme */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --card-bg: #f9fafb;
+  --border-color: #e5e7eb;
+  --text-primary: #111827;
+  --text-muted: #6b7280;
+  --hover-bg: #f3f4f6; /* ✅ Added for light hover */
+  --button-hover-text: #111827; /* ✅ Added for contrast */
+}
+
+/* 🌚 Dark Theme */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f3f4f6;
+  --card-bg: #111827;
+  --border-color: #1f2937;
+  --text-primary: #f9fafb;
+  --text-muted: #9ca3af;
+  --hover-bg: #1f1f1f; /* ✅ Added for dark hover */
+  --button-hover-text: #f9fafb; /* ✅ Added for contrast */
+}
+
+/* 🧩 Global body styles */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, sans-serif;
+  transition:
+    background 0.3s ease,
+    color 0.3s ease;
+}
+
+/* ✨ Button defaults */
+@layer components {
+  button {
+    @apply transition-all duration-200 rounded-lg font-medium;
+    color: var(--text-primary);
+    background: transparent;
+  }
+
+  button:hover {
+    background-color: var(--hover-bg);
+    color: var(--button-hover-text);
+  }
+}
+
+/* 🎞️ Optional animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}

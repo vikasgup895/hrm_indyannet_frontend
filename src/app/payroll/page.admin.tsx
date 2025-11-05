@@ -20,33 +20,46 @@ export default function PayrollAdminPage() {
   });
 
   useEffect(() => {
+    if (!token) return;
+    if (payrolls.length > 0) return; // prevent double StrictMode fetch
+
     const fetchData = async () => {
-      try {
-        const res = await api.get("/payroll/payslips", {
-          headers: { Authorization: `Bearer ${token}` },
+      console.log("📡 Fetching /payroll/payslips");
+
+      const res = await api.get("/payroll/payslips", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("✅ API returned:", res.data);
+      const data = res.data || [];
+      setPayrolls(data);
+
+      if (data.length > 0) {
+        const latest = data[0];
+        console.log("🧾 latest payslip payload:", latest);
+
+        const rawPeriodEnd = latest.payrollRun?.periodEnd;
+        console.log("📅 Raw periodEnd:", rawPeriodEnd);
+
+        const parsed = new Date(rawPeriodEnd);
+        console.log("📅 parsed Date:", parsed);
+
+        const nice = parsed.toLocaleString("default", {
+          month: "long",
+          year: "numeric",
         });
-        const data = res.data || [];
-        setPayrolls(data);
+        console.log("✅ formatted payroll month:", nice);
 
-        if (data.length > 0) {
-          const latest = data[0];
-          const month = new Date(
-            latest.payrollRun?.payDate || ""
-          ).toLocaleString("default", { month: "long", year: "numeric" });
-
-          setSummary({
-            currentMonth: month,
-            lastProcessed: month,
-            totalPaid: data.length,
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch payroll data:", err);
+        setSummary({
+          currentMonth: nice,
+          lastProcessed: nice,
+          totalPaid: data.length,
+        });
       }
     };
 
-    if (token) fetchData();
-  }, [token]);
+    fetchData();
+  }, [token, payrolls.length]);
 
   const handleGeneratePayslip = () => router.push("/payroll/generate-payslip");
 
@@ -69,7 +82,7 @@ export default function PayrollAdminPage() {
       <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <PayrollCard
           icon={<Calendar className="text-blue-500" size={20} />}
-          title="Current Month"
+          title="Payroll Month"
           value={summary.currentMonth}
         />
         <PayrollCard

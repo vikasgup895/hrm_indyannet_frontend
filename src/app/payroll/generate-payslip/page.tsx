@@ -1,366 +1,1225 @@
+
+// "use client";
+
+// import { useEffect, useMemo, useRef, useState } from "react";
+// import { api } from "@/lib/api";
+// import { useAuth } from "@/store/auth";
+// import {
+//   Download,
+//   FileText,
+//   Calendar as CalIcon,
+//   UserRound,
+//   ArrowLeft,
+//   RefreshCcw,
+// } from "lucide-react";
+// import { useRouter } from "next/navigation";
+// import html2canvas from "html2canvas";
+// import jsPDF from "jspdf";
+
+// /* ───────────────────────────────── Types ───────────────────────────────── */
+// type BasicEmployee = {
+//   id: string;
+//   firstName: string;
+//   lastName: string;
+//   department?: string | null;
+//   workEmail?: string | null;
+// };
+
+// type BankDetail = {
+//   bankName?: string | null;
+//   accountNumber?: string | null;
+//   ifscCode?: string | null;
+//   branch?: string | null;
+//   pfNumber?: string | null;
+//   uan?: string | null;
+// };
+
+// type FullEmployee = {
+//   id: string;
+//   personNo: string;
+//   firstName: string;
+//   lastName: string;
+//   workEmail: string;
+//   department?: string | null;
+//   location?: string | null;
+//   hireDate?: string | null;
+//   user?: { role?: string | null } | null;
+//   bankDetail?: BankDetail | null;
+// };
+
+// /* ─────────────────────────────── Utilities ─────────────────────────────── */
+// const inr = (n: number) =>
+//   new Intl.NumberFormat("en-IN", {
+//     style: "currency",
+//     currency: "INR",
+//     maximumFractionDigits: 2,
+//   }).format(n);
+
+// function toIndianWords(num: number): string {
+//   if (Number.isNaN(num)) return "";
+//   if (num === 0) return "Zero Rupees Only";
+//   const belowTwenty = [
+//     "",
+//     "One",
+//     "Two",
+//     "Three",
+//     "Four",
+//     "Five",
+//     "Six",
+//     "Seven",
+//     "Eight",
+//     "Nine",
+//     "Ten",
+//     "Eleven",
+//     "Twelve",
+//     "Thirteen",
+//     "Fourteen",
+//     "Fifteen",
+//     "Sixteen",
+//     "Seventeen",
+//     "Eighteen",
+//     "Nineteen",
+//   ];
+//   const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+//   const two = (n: number) =>
+//     n < 20
+//       ? belowTwenty[n]
+//       : `${tens[Math.floor(n / 10)]}${n % 10 ? " " + belowTwenty[n % 10] : ""}`;
+
+//   const crore = Math.floor(num / 10000000);
+//   const lakh = Math.floor((num % 10000000) / 100000);
+//   const thousand = Math.floor((num % 100000) / 1000);
+//   const hundred = Math.floor((num % 1000) / 100);
+//   const rest = num % 100;
+
+//   const parts: string[] = [];
+//   if (crore) parts.push(`${two(crore)} Crore`);
+//   if (lakh) parts.push(`${two(lakh)} Lakh`);
+//   if (thousand) parts.push(`${two(thousand)} Thousand`);
+//   if (hundred) parts.push(`${belowTwenty[hundred]} Hundred`);
+//   if (rest) parts.push(two(rest));
+
+//   return `${parts.join(" ")} Rupees Only`.replace(/\s+/g, " ").trim();
+// }
+
+// function monthLabel(isoYM: string) {
+//   if (!isoYM) return "";
+//   const [y, m] = isoYM.split("-").map(Number);
+//   const d = new Date(y, (m || 1) - 1, 1);
+//   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+// }
+
+// /* ─────────────────────────────── Component ─────────────────────────────── */
+// export default function PayslipPage() {
+//   const router = useRouter();
+//   const { token } = useAuth();
+
+//   const [employees, setEmployees] = useState<BasicEmployee[]>([]);
+//   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+
+//   const [month, setMonth] = useState<string>(() => {
+//     const d = new Date();
+//     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+//   });
+
+//   const [emp, setEmp] = useState<FullEmployee | null>(null);
+//   const [loadingEmp, setLoadingEmp] = useState(false);
+//   const [loadingList, setLoadingList] = useState(true);
+
+//   const [showSlip, setShowSlip] = useState(false);
+//   const [generating, setGenerating] = useState(false);
+
+//   // inputs
+//   const [earnings, setEarnings] = useState({
+//     basic: 0,
+//     hra: 0,
+//     conveyance: 0,
+//     medical: 0,
+//     bonus: 0,
+//     other: 0,
+//   });
+//   const [deductions, setDeductions] = useState({
+//     epf: 0,
+//     professionalTax: 0,
+//     other: 0,
+//   });
+
+//   const payslipRef = useRef<HTMLDivElement>(null);
+
+//   /* ─────────────────────── Data: employees + details ────────────────────── */
+//   useEffect(() => {
+//     (async () => {
+//       try {
+//         if (!token) return;
+//         setLoadingList(true);
+//         const res = await api.get("/employees/basic/all", {
+//           headers: { Authorization: `Bearer ${token}` },
+//         });
+//         const list = res.data || [];
+//         setEmployees(list);
+//         if (list?.length && !selectedEmployeeId) setSelectedEmployeeId(list[0].id);
+//       } catch (e) {
+//         console.error("Failed to load employees:", e);
+//       } finally {
+//         setLoadingList(false);
+//       }
+//     })();
+//   }, [token]);
+
+//   const fetchEmployee = async (id: string) => {
+//     if (!id || !token) return;
+//     try {
+//       setLoadingEmp(true);
+//       const res = await api.get(`/employees/${id}`, {
+//         headers: { Authorization: `Bearer ${token}` },
+//       });
+//       setEmp(res.data);
+//     } catch (e) {
+//       console.error("Failed to load employee:", e);
+//       setEmp(null);
+//     } finally {
+//       setLoadingEmp(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     if (selectedEmployeeId) fetchEmployee(selectedEmployeeId);
+//   }, [selectedEmployeeId]);
+
+//   /* ───────────────────────────── Calculations ───────────────────────────── */
+//   const grossEarnings = useMemo(
+//     () =>
+//       earnings.basic +
+//       earnings.hra +
+//       earnings.conveyance +
+//       earnings.medical +
+//       earnings.bonus +
+//       earnings.other,
+//     [earnings]
+//   );
+//   const totalDeductions = useMemo(
+//     () => deductions.epf + deductions.professionalTax + deductions.other,
+//     [deductions]
+//   );
+//   const netPay = useMemo(
+//     () => Math.max(0, grossEarnings - totalDeductions),
+//     [grossEarnings, totalDeductions]
+//   );
+
+//   /* ─────────────────────────────── Handlers ─────────────────────────────── */
+//   const setEarn = (key: keyof typeof earnings, v: number | string) =>
+//     setEarnings((s) => ({ ...s, [key]: Number(v) || 0 }));
+//   const setDed = (key: keyof typeof deductions, v: number | string) =>
+//     setDeductions((s) => ({ ...s, [key]: Number(v) || 0 }));
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+  
+//     if (!selectedEmployeeId) {
+//       alert("Please select an employee first.");
+//       return;
+//     }
+  
+//     setGenerating(true);
+  
+//     try {
+//       console.log("🔍 FETCHING PAYROLL RUNS...");
+  
+//       const runRes = await api.get("/payroll/runs", {
+//         headers: { Authorization: `Bearer ${token}` },
+//       });
+  
+//       console.log("📦 /payroll/runs response:", JSON.stringify(runRes.data, null, 2));
+  
+//       let run = runRes.data.find((r: any) =>
+//       monthLabel(r.periodEnd) === monthLabel(month) && r.status === "DRAFT"
+//     );
+    
+//     if (!run) {
+//       run = runRes.data
+//         .filter((r: any) => monthLabel(r.periodEnd) === monthLabel(month))
+//         .sort(
+//           (a: any, b: any) =>
+//             new Date(b.periodEnd).getTime() - new Date(a.periodEnd).getTime()
+//         )[0];
+//     }
+    
+//     if (!run) {
+//       alert("❌ No payroll run found for this month.");
+//       return;
+//     }
+    
+
+
+      
+  
+//       const payload = {
+//         employeeId: selectedEmployeeId,
+//         runId: run.id,
+//         gross: grossEarnings,
+//         deductions: totalDeductions,
+//         net: netPay,
+//         currency: "INR",
+//       };
+  
+//       console.log("📤 /payroll/generate payload:", payload);
+  
+//       const genRes = await api.post("/payroll/generate", payload, {
+//         headers: { Authorization: `Bearer ${token}` },
+//       });
+  
+//       console.log("✅ Payslip generated:", genRes.data);
+//       alert("✅ Payslip generated successfully!");
+  
+//       setShowSlip(true);
+  
+//       setTimeout(() => {
+//         payslipRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+//       }, 150);
+//     } catch (err: any) {
+//       console.error("❌ Error generating payslip:", err);
+//       const msg = err?.response?.data?.message ?? err?.message ?? "Unknown error";
+//       alert(`❌ ${msg}`);
+//     } finally {
+//       setGenerating(false);
+//     }
+//   };
+  
+
+//   // Bulletproof html2canvas: render from an off-screen, inlined clone
+//   const onDownloadPdf = async () => {
+//     if (!payslipRef.current) return;
+//     const source = payslipRef.current;
+
+//     const clone = source.cloneNode(true) as HTMLElement;
+//     clone.style.background = "white";
+
+//     clone.querySelectorAll("*").forEach((node) => {
+//       const el = node as HTMLElement;
+//       el.style.color = "black";
+//       el.style.backgroundColor = "white";
+//       el.style.borderColor = "black";
+//       el.style.boxShadow = "none";
+//       el.style.filter = "none";
+//     });
+
+//     const container = document.createElement("div");
+//     container.style.position = "fixed";
+//     container.style.left = "-9999px";
+//     container.appendChild(clone);
+//     document.body.appendChild(container);
+
+//     const canvas = await html2canvas(clone, {
+//       scale: 2,
+//       backgroundColor: "#fff",
+//       useCORS: true,
+//     });
+
+//     document.body.removeChild(container);
+
+//     const imgData = canvas.toDataURL("image/png");
+//     const pdf = new jsPDF("p", "pt", "a4");
+
+//     const pageWidth = pdf.internal.pageSize.getWidth();
+//     const imgWidth = pageWidth - 40;
+//     const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+//     pdf.addImage(imgData, "PNG", 20, 20, imgWidth, imgHeight);
+//     const fileName = `Payslip_${emp?.firstName ?? "Employee"}_${monthLabel(month).replace(
+//       " ",
+//       "_"
+//     )}.pdf`;
+//     pdf.save(fileName);
+//   };
+
+//   /* ──────────────────────────────── Render ──────────────────────────────── */
+//   return (
+//     <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)] px-4 py-6">
+//       <div className="mx-auto max-w-6xl">
+//         {/* Top bar with Back */}
+//         <div className="mb-3">
+//           <button
+//             onClick={() => router.back()}
+//             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--card-bg)]"
+//           >
+//             <ArrowLeft className="w-4 h-4" />
+//             <span className="text-sm">Back</span>
+//           </button>
+//         </div>
+
+//         <h1 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+//           <FileText className="text-blue-500" /> Generate Payslip
+//         </h1>
+
+//         {/* Form card */}
+//         <form
+//           onSubmit={handleSubmit}
+//           className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-4 mb-6"
+//         >
+//           {/* Inputs row */}
+//           <div className="grid md:grid-cols-4 gap-4">
+//             <label className="flex flex-col">
+//               <span className="text-sm text-[var(--text-muted)] mb-1">Select Employee</span>
+//               <select
+//                 value={selectedEmployeeId}
+//                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
+//                 className="px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
+//               >
+//                 {loadingList && <option>Loading…</option>}
+//                 {!loadingList && employees.length === 0 && <option>No employees</option>}
+//                 {!loadingList &&
+//                   employees.map((e) => (
+//                     <option key={e.id} value={e.id}>
+//                       {e.firstName} {e.lastName}
+//                     </option>
+//                   ))}
+//               </select>
+//             </label>
+
+//             <label className="flex flex-col">
+//               <span className="text-sm text-[var(--text-muted)] mb-1">Month</span>
+//               <div className="relative">
+//                 <input
+//                   type="month"
+//                   value={month}
+//                   onChange={(e) => setMonth(e.target.value)}
+//                   className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] pr-10"
+//                 />
+//                 <CalIcon className="w-4 h-4 absolute right-3 top-3 text-[var(--text-muted)]" />
+//               </div>
+//             </label>
+//           </div>
+
+//           {/* Earnings / Deductions */}
+//           <div className="grid md:grid-cols-2 gap-6 mt-6">
+//             <div>
+//               <h3 className="font-semibold mb-2">Earnings</h3>
+//               <div className="grid grid-cols-2 gap-3">
+//                 {(
+//                   [
+//                     ["basic", "Basic"],
+//                     ["hra", "HRA"],
+//                     ["conveyance", "Conveyance Allowance"],
+//                     ["medical", "Medical"],
+//                     ["bonus", "Bonus"],
+//                     ["other", "Other"],
+//                   ] as const
+//                 ).map(([key, label]) => (
+//                   <label key={key} className="text-sm">
+//                     <span className="text-[var(--text-muted)]">{label}</span>
+//                     <input
+//                       type="number"
+//                       inputMode="decimal"
+//                       className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
+//                       placeholder="Enter amount ..."
+//                       value={earnings[key] || ""}
+//                       onChange={(e) => setEarn(key, e.target.value)}
+//                     />
+//                   </label>
+//                 ))}
+//               </div>
+//             </div>
+//             <div>
+//               <h3 className="font-semibold mb-2">Deductions</h3>
+//               <div className="grid grid-cols-2 gap-3">
+//                 {(
+//                   [
+//                     ["epf", "EPF Contribution"],
+//                     ["professionalTax", "Professional Tax"],
+//                     ["other", "Other"],
+//                   ] as const
+//                 ).map(([key, label]) => (
+//                   <label key={key} className="text-sm">
+//                     <span className="text-[var(--text-muted)]">{label}</span>
+//                     <input
+//                       type="number"
+//                       inputMode="decimal"
+//                       className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
+//                       placeholder="Enter amount ..."
+//                       value={deductions[key] || ""}
+//                       onChange={(e) => setDed(key, e.target.value)}
+//                     />
+//                   </label>
+//                 ))}
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* Bottom actions (centered) */}
+//           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+//             <button
+//               type="submit"
+//               disabled={generating}
+//               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-70"
+//             >
+//               {generating ? (
+//                 <>
+//                   <RefreshCcw className="w-4 h-4 animate-spin" />
+//                   Generating…
+//                 </>
+//               ) : (
+//                 <>Generate Payslip</>
+//               )}
+//             </button>
+//             <button
+//               type="button"
+//               onClick={onDownloadPdf}
+//               disabled={!showSlip || !emp}
+//               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-[var(--border-color)] disabled:opacity-50"
+//               title={!showSlip ? "Generate a payslip first" : "Download PDF"}
+//             >
+//               <Download className="w-4 h-4" />
+//               Download PDF
+//             </button>
+//           </div>
+//         </form>
+
+//         {/* Payslip Preview (only after success) */}
+//         {showSlip && (
+//           <div
+//             ref={payslipRef}
+//             id="payslip"
+//             className="bg-white text-black rounded-lg border p-8 print:p-0"
+//           >
+//             {/* Header */}
+//             <div className="flex items-start justify-between">
+//               <div className="flex items-center gap-3">
+//                 <div className="w-12 h-12 rounded-md bg-red-600 text-white font-black flex items-center justify-center">
+//                   IN
+//                 </div>
+//                 <div>
+//                   <div className="text-sm text-gray-500">Kerala India</div>
+//                   <div className="font-semibold text-gray-800">Indyanet HRM</div>
+//                 </div>
+//               </div>
+//               <div className="text-right">
+//                 <div className="text-xs text-gray-500">Payslip for the Month</div>
+//                 <div className="text-sm font-semibold text-gray-800">{monthLabel(month)}</div>
+//               </div>
+//             </div>
+
+//             {/* Employee Summary */}
+//             <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2 text-sm">
+//               <Field label="Employee Name" value={`${emp?.firstName ?? ""} ${emp?.lastName ?? ""}`} />
+//               <Field label="Designation" value={emp?.user?.role ?? "—"} />
+//               <Field label="Employee ID" value={emp?.personNo ?? "—"} />
+//               <Field label="Department" value={emp?.department ?? "—"} />
+//               <Field
+//                 label="Date of Joining"
+//                 value={emp?.hireDate ? new Date(emp.hireDate).toLocaleDateString("en-GB") : "—"}
+//               />
+//               <Field label="Pay Period" value={monthLabel(month)} />
+//               <Field label="Pay Date" value={new Date().toLocaleDateString("en-GB")} />
+//               <Field label="PF A/C Number" value={emp?.bankDetail?.pfNumber ?? "—"} />
+//               <Field label="UAN" value={emp?.bankDetail?.uan ?? "—"} />
+//             </div>
+
+//             {/* Earnings & Deductions */}
+//             <div className="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+//               <div className="grid grid-cols-2 bg-gray-50 text-gray-700 font-semibold text-sm">
+//                 <div className="px-4 py-2 border-r border-gray-200">EARNINGS</div>
+//                 <div className="px-4 py-2">DEDUCTIONS</div>
+//               </div>
+//               <div className="grid grid-cols-2">
+//                 <div className="border-r border-gray-200">
+//                   <Row label="Basic" amount={earnings.basic} />
+//                   <Row label="HRA" amount={earnings.hra} />
+//                   <Row label="Conveyance Allowance" amount={earnings.conveyance} />
+//                   <Row label="Medical" amount={earnings.medical} />
+//                   <Row label="Bonus" amount={earnings.bonus} />
+//                   <Row label="Other" amount={earnings.other} />
+//                   <Row label="Gross Earnings" amount={grossEarnings} bold />
+//                 </div>
+//                 <div>
+//                   <Row label="EPF Contribution" amount={deductions.epf} />
+//                   <Row label="Professional Tax" amount={deductions.professionalTax} />
+//                   <Row label="Other" amount={deductions.other} />
+//                   <Row label="Total Deductions" amount={totalDeductions} bold />
+//                 </div>
+//               </div>
+//             </div>
+
+//             {/* Net Pay */}
+//             <div className="mt-4 grid grid-cols-3 gap-4">
+//               <div className="col-span-2 rounded-lg border border-green-200 bg-green-50 p-4">
+//                 <div className="text-xs text-gray-500">TOTAL NET PAYABLE</div>
+//                 <div className="text-lg font-semibold text-gray-800">{inr(netPay)}</div>
+//               </div>
+//               <div className="rounded-lg border border-green-200 bg-green-50 p-4 flex items-center justify-center">
+//                 <div className="text-center">
+//                   <div className="text-xs text-gray-500">Net Pay</div>
+//                   <div className="text-2xl font-bold text-gray-900">{inr(netPay)}</div>
+//                 </div>
+//               </div>
+//             </div>
+
+//             {/* Amount in Words */}
+//             <div className="mt-6 text-center text-xs text-gray-600">
+//               Amount in words :{" "}
+//               <span className="font-medium text-gray-800">
+//                 {toIndianWords(Math.round(netPay))}
+//               </span>
+//             </div>
+
+//             <div className="mt-2 text-center text-[10px] text-gray-400">
+//               This is a system generated payslip.
+//             </div>
+
+//             {/* Footer – signature */}
+//             <div className="mt-10 flex items-center justify-between text-sm text-gray-600">
+//               <div className="flex items-center gap-2">
+//                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+//                   <UserRound className="w-4 h-4 text-gray-600" />
+//                 </div>
+//                 <div>
+//                   <div className="font-medium text-gray-800">
+//                     {emp ? `${emp.firstName} ${emp.lastName}` : "Employee"}
+//                   </div>
+//                   <div className="text-xs text-gray-500">{emp?.user?.role ?? "—"}</div>
+//                 </div>
+//               </div>
+//               <div className="text-right">
+//                 <div className="text-xs text-gray-500">Authorized Signatory</div>
+//                 <div className="mt-6 border-t border-gray-300 w-40 ml-auto" />
+//               </div>
+//             </div>
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+// /* ────────────────────── Little presentational bits ─────────────────────── */
+// function Field({ label, value }: { label: string; value?: string | number | null }) {
+//   return (
+//     <div className="flex gap-2">
+//       <span className="text-gray-500 w-36">{label} :</span>
+//       <span className="text-gray-800 font-medium">{value ?? "—"}</span>
+//     </div>
+//   );
+// }
+
+// function Row({ label, amount, bold = false }: { label: string; amount: number; bold?: boolean }) {
+//   return (
+//     <div className={`grid grid-cols-2 text-sm ${bold ? "bg-gray-50 font-semibold" : ""}`}>
+//       <div className="px-4 py-2 border-b border-gray-200">{label}</div>
+//       <div className="px-4 py-2 border-b border-gray-200 text-right">{inr(amount)}</div>
+//     </div>
+//   );
+// }
+
+
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  FileText,
-  Download,
-  User,
-  Building,
-  Calendar,
-  DollarSign,
-  Eye,
-  RefreshCw,
-} from "lucide-react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
-import jsPDF from "jspdf";
+import {
+  Download,
+  FileText,
+  Calendar as CalIcon,
+  UserRound,
+  ArrowLeft,
+  RefreshCcw,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
-/* ────────────────────────────── */
-/* Reusable Inputs (Theme Compatible) */
-/* ────────────────────────────── */
-const FormField = ({ label, children, icon: Icon }: any) => (
-  <div className="space-y-2">
-    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-      {Icon && <Icon className="w-4 h-4 text-[var(--text-muted)]" />}
-      {label}
-    </label>
-    {children}
-  </div>
-);
+/* ───────────────────────────────── Types ───────────────────────────────── */
+type BasicEmployee = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  department?: string | null;
+  workEmail?: string | null;
+};
 
-const Input = ({ className = "", ...props }: any) => (
-  <input
-    className={`w-full px-4 py-3 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl 
-      text-[var(--text-primary)] placeholder-[var(--text-muted)] 
-      focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${className}`}
-    {...props}
-  />
-);
+type BankDetail = {
+  bankName?: string | null;
+  accountNumber?: string | null;
+  ifscCode?: string | null;
+  branch?: string | null;
+  pfNumber?: string | null;
+  uan?: string | null;
+};
 
-/* ────────────────────────────── */
-/* Main Component */
-/* ────────────────────────────── */
-export default function GeneratePayslipPage() {
+type FullEmployee = {
+  id: string;
+  personNo: string;
+  firstName: string;
+  lastName: string;
+  workEmail: string;
+  department?: string | null;
+  location?: string | null;
+  hireDate?: string | null;
+  user?: { role?: string | null } | null;
+  bankDetail?: BankDetail | null;
+};
+
+/* ─────────────────────────────── Utilities ─────────────────────────────── */
+const inr = (n: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(n);
+
+function toIndianWords(num: number): string {
+  if (Number.isNaN(num)) return "";
+  if (num === 0) return "Zero Rupees Only";
+  const belowTwenty = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+  const two = (n: number) =>
+    n < 20
+      ? belowTwenty[n]
+      : `${tens[Math.floor(n / 10)]}${n % 10 ? " " + belowTwenty[n % 10] : ""}`;
+
+  const crore = Math.floor(num / 10000000);
+  const lakh = Math.floor((num % 10000000) / 100000);
+  const thousand = Math.floor((num % 100000) / 1000);
+  const hundred = Math.floor((num % 1000) / 100);
+  const rest = num % 100;
+
+  const parts: string[] = [];
+  if (crore) parts.push(`${two(crore)} Crore`);
+  if (lakh) parts.push(`${two(lakh)} Lakh`);
+  if (thousand) parts.push(`${two(thousand)} Thousand`);
+  if (hundred) parts.push(`${belowTwenty[hundred]} Hundred`);
+  if (rest) parts.push(two(rest));
+
+  return `${parts.join(" ")} Rupees Only`.replace(/\s+/g, " ").trim();
+}
+
+function monthLabel(isoYM: string) {
+  if (!isoYM) return "";
+  const [y, m] = isoYM.split("-").map(Number);
+  const d = new Date(y, (m || 1) - 1, 1);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+/** Return yyyy-mm from a payrollRun periodEnd (BUG-3 util) */
+function runMonth(r: any): string {
+  return new Date(r.periodEnd).toISOString().slice(0, 7);
+}
+
+/* ─────────────────────────────── Component ─────────────────────────────── */
+export default function PayslipPage() {
+  const router = useRouter();
   const { token } = useAuth();
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [form, setForm] = useState({
-    employeeId: "",
-    name: "",
-    department: "",
-    designation: "",
-    month: "",
-    salary: "",
-  });
-  const [generated, setGenerated] = useState(false);
-  const [downloading, setDownloading] = useState(false);
 
-  /* ─── Fetch Employees ─── */
+  const [employees, setEmployees] = useState<BasicEmployee[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+
+  const [month, setMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const [emp, setEmp] = useState<FullEmployee | null>(null);
+  const [loadingEmp, setLoadingEmp] = useState(false);
+  const [loadingList, setLoadingList] = useState(true);
+
+  const [showSlip, setShowSlip] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // inputs
+  const [earnings, setEarnings] = useState({
+    basic: 0,
+    hra: 0,
+    conveyance: 0,
+    medical: 0,
+    bonus: 0,
+    other: 0,
+  });
+  const [deductions, setDeductions] = useState({
+    epf: 0,
+    professionalTax: 0,
+    other: 0,
+  });
+
+  const payslipRef = useRef<HTMLDivElement>(null);
+
+  /* ─────────────────────── Data: employees + details ────────────────────── */
   useEffect(() => {
-    const fetchEmployees = async () => {
+    (async () => {
       try {
-        const res = await api.get("/employees", {
+        if (!token) return;
+        setLoadingList(true);
+        const res = await api.get("/employees/basic/all", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setEmployees(res.data || []);
-      } catch (err) {
-        console.error("Error fetching employees:", err);
+        const list = res.data || [];
+        setEmployees(list);
+        if (list?.length && !selectedEmployeeId) setSelectedEmployeeId(list[0].id);
+      } catch (e) {
+        console.error("Failed to load employees:", e);
+      } finally {
+        setLoadingList(false);
       }
-    };
-    if (token) fetchEmployees();
+    })();
   }, [token]);
 
-  /* ─── Select Employee ─── */
-  const handleSelectEmployee = (e: any) => {
-    const empId = e.target.value;
-    const emp = employees.find((emp) => emp.id === empId);
-    if (emp) {
-      setForm({
-        ...form,
-        employeeId: emp.id,
-        name: `${emp.firstName} ${emp.lastName}`,
-        department: emp.department || "",
-        designation: emp.position || "Employee",
+  const fetchEmployee = async (id: string) => {
+    if (!id || !token) return;
+    try {
+      setLoadingEmp(true);
+      const res = await api.get(`/employees/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      setEmp(res.data);
+    } catch (e) {
+      console.error("Failed to load employee:", e);
+      setEmp(null);
+    } finally {
+      setLoadingEmp(false);
     }
   };
 
-  /* ─── Generate Payslip ─── */
+  useEffect(() => {
+    if (selectedEmployeeId) fetchEmployee(selectedEmployeeId);
+  }, [selectedEmployeeId]);
+
+  /* ───────────────────────────── Calculations ───────────────────────────── */
+  const grossEarnings = useMemo(
+    () =>
+      earnings.basic +
+      earnings.hra +
+      earnings.conveyance +
+      earnings.medical +
+      earnings.bonus +
+      earnings.other,
+    [earnings]
+  );
+  const totalDeductions = useMemo(
+    () => deductions.epf + deductions.professionalTax + deductions.other,
+    [deductions]
+  );
+  const netPay = useMemo(
+    () => Math.max(0, grossEarnings - totalDeductions),
+    [grossEarnings, totalDeductions]
+  );
+
+  /* ─────────────────────────────── Handlers ─────────────────────────────── */
+  const setEarn = (key: keyof typeof earnings, v: number | string) =>
+    setEarnings((s) => ({ ...s, [key]: Number(v) || 0 }));
+  const setDed = (key: keyof typeof deductions, v: number | string) =>
+    setDeductions((s) => ({ ...s, [key]: Number(v) || 0 }));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!selectedEmployeeId) {
+      alert("Please select an employee first.");
+      return;
+    }
+
+    setGenerating(true);
+
     try {
-      if (!form.employeeId) {
-        alert("Please select an employee first.");
-        return;
-      }
-
-      if (!confirm(`Generate payslip for ${form.name}?`)) return;
-
-      const gross = Number(form.salary);
-      const pf = gross * 0.12;
-      const tax = gross * 0.1;
-      const esi = gross * 0.0075;
-      const deductions = pf + tax + esi;
-      const net = gross - deductions;
-
+      // 1) Get all runs
       const runRes = await api.get("/payroll/runs", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const run = runRes.data?.[0];
+      const runs: any[] = Array.isArray(runRes.data) ? runRes.data : [];
+
+      // 2) Filter runs for the SELECTED month (BUG-1 + BUG-3 fix)
+      const targetMonth = month; // yyyy-mm from the input
+      const monthRuns = runs.filter((r) => runMonth(r) === targetMonth);
+
+      if (monthRuns.length === 0) {
+        alert(`❌ No payroll run exists for ${monthLabel(targetMonth)}.`);
+        return;
+      }
+
+      // 3) Choose DRAFT first; otherwise latest APPROVED within that month
+      const run =
+        monthRuns.find((r) => r.status === "DRAFT") ||
+        monthRuns
+          .filter((r) => r.status === "APPROVED")
+          .sort(
+            (a, b) =>
+              new Date(b.periodEnd).getTime() - new Date(a.periodEnd).getTime()
+          )[0];
+
       if (!run) {
-        alert("❌ No active payroll run found. Please create one first.");
+        alert(`❌ No usable payroll run found for ${monthLabel(targetMonth)}.`);
         return;
       }
 
-      const res = await api.post(
-        "/payroll/generate",
-        {
-          employeeId: form.employeeId,
-          runId: run.id,
-          gross,
-          deductions,
-          net,
-          currency: "INR",
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // 4) Generate payslip
+      const payload = {
+        employeeId: selectedEmployeeId,
+        runId: run.id,
+        gross: grossEarnings,
+        deductions: totalDeductions,
+        net: netPay,
+        currency: "INR",
+      };
 
-      console.log("Payslip generated:", res.data);
-      alert("✅ Payslip generated successfully!");
-      setGenerated(true);
-    } catch (err) {
-      console.error("Error generating payslip:", err);
-      alert("❌ Failed to generate payslip. Check console for details.");
-    }
-  };
-
-  /* ─── Download PDF ─── */
-  const downloadPDF = async () => {
-    setDownloading(true);
-    try {
-      const payslipEl = document.getElementById("payslip");
-      if (!payslipEl) {
-        alert("❌ Payslip not found in DOM.");
-        setDownloading(false);
-        return;
-      }
-
-      const canvas = await html2canvas(payslipEl as HTMLElement, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
+      await api.post("/payroll/generate", payload, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const pdf = new jsPDF("p", "mm", "a4");
-      const imgData = canvas.toDataURL("image/png", 1.0);
+      alert("✅ Payslip generated successfully!");
+      setShowSlip(true);
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const ratio = Math.min(
-        pdfWidth / canvas.width,
-        pdfHeight / canvas.height
-      );
-      const imgWidth = canvas.width * ratio;
-      const imgHeight = canvas.height * ratio;
-      const x = (pdfWidth - imgWidth) / 2;
-      const y = 10;
-
-      pdf.addImage(imgData, "PNG", x, y, imgWidth, imgHeight);
-      const filename = `${form.name.replace(/\s+/g, "_")}_Payslip.pdf`;
-      pdf.save(filename);
-    } catch (error) {
-      console.error("❌ Error while creating PDF:", error);
-      alert("Error generating PDF. See console for details.");
+      setTimeout(() => {
+        payslipRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+    } catch (err: any) {
+      console.error("❌ Error generating payslip:", err);
+      const msg = err?.response?.data?.message ?? err?.message ?? "Unknown error";
+      alert(`❌ ${msg}`);
     } finally {
-      setDownloading(false);
+      setGenerating(false);
     }
   };
 
-  /* ─── Calculations ─── */
-  const salary = Number(form.salary);
-  const pf = salary * 0.12;
-  const tax = salary * 0.1;
-  const esi = salary * 0.0075;
-  const totalDeductions = pf + tax + esi;
-  const netPay = salary - totalDeductions;
+  // PDF: render from an off-screen, inlined clone (robust vs Tailwind)
+  const onDownloadPdf = async () => {
+    if (!payslipRef.current) return;
+    const source = payslipRef.current;
 
-  /* ─── UI ─── */
+    const clone = source.cloneNode(true) as HTMLElement;
+    clone.style.background = "white";
+
+    clone.querySelectorAll("*").forEach((node) => {
+      const el = node as HTMLElement;
+      el.style.color = "black";
+      el.style.backgroundColor = "white";
+      el.style.borderColor = "black";
+      el.style.boxShadow = "none";
+      el.style.filter = "none";
+    });
+
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "-9999px";
+    container.appendChild(clone);
+    document.body.appendChild(container);
+
+    const canvas = await html2canvas(clone, {
+      scale: 2,
+      backgroundColor: "#fff",
+      useCORS: true,
+    });
+
+    document.body.removeChild(container);
+
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "pt", "a4");
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgWidth = pageWidth - 40;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 20, 20, imgWidth, imgHeight);
+    const fileName = `Payslip_${emp?.firstName ?? "Employee"}_${monthLabel(month).replace(
+      " ",
+      "_"
+    )}.pdf`;
+    pdf.save(fileName);
+  };
+
+  /* ──────────────────────────────── Render ──────────────────────────────── */
   return (
-    <div className="min-h-screen p-6 bg-[var(--background)] text-[var(--text-primary)] transition-colors duration-300">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <Link
-            href="/payroll"
-            className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors"
+    <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)] px-4 py-6">
+      <div className="mx-auto max-w-6xl">
+        {/* Top bar with Back */}
+        <div className="mb-3">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--card-bg)]"
           >
-            <ArrowLeft className="w-5 h-5" /> Back to Payroll
-          </Link>
-          <div className="flex items-center gap-3">
-            <FileText className="w-6 h-6 text-blue-500" />
-            <h1 className="text-2xl font-bold">Generate Payslip</h1>
-          </div>
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm">Back</span>
+          </button>
         </div>
 
-        {/* Form or Generated Payslip */}
-        {!generated ? (
-          <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-lg p-6 transition-all duration-300">
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Employee Selection */}
-                <FormField label="Select Employee" icon={User}>
-                  <select
-                    value={form.employeeId}
-                    onChange={handleSelectEmployee}
-                    required
-                    className="w-full px-4 py-3 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                  >
-                    <option value="">Select an Employee</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.firstName} {emp.lastName} ({emp.department})
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
+        <h1 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+          <FileText className="text-blue-500" /> Generate Payslip
+        </h1>
 
-                <FormField label="Department" icon={Building}>
-                  <Input type="text" value={form.department} readOnly />
-                </FormField>
-
-                <FormField label="Designation" icon={User}>
-                  <Input type="text" value={form.designation} readOnly />
-                </FormField>
-
-                <FormField label="Salary Month" icon={Calendar}>
-                  <Input
-                    type="month"
-                    value={form.month}
-                    onChange={(e: any) =>
-                      setForm({ ...form, month: e.target.value })
-                    }
-                    required
-                  />
-                </FormField>
-
-                <FormField label="Basic Salary (₹)" icon={DollarSign}>
-                  <Input
-                    type="number"
-                    placeholder="Enter salary"
-                    value={form.salary}
-                    onChange={(e: any) =>
-                      setForm({ ...form, salary: e.target.value })
-                    }
-                    required
-                  />
-                </FormField>
-              </div>
-
-              <div className="flex justify-end mt-6">
-                <button
-                  type="submit"
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-                >
-                  <Eye className="w-5 h-5" />
-                  Generate Payslip
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : (
-          <>
-            {/* Generated Notice */}
-            <div className="flex justify-between items-center bg-[var(--card-bg)] border border-[var(--border-color)] p-4 rounded-xl">
-              <span>
-                Payslip generated for <strong>{form.name}</strong>
-              </span>
-              <button
-                onClick={downloadPDF}
-                disabled={downloading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 disabled:opacity-70"
+        {/* Form card */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-4 mb-6"
+        >
+          {/* Inputs row */}
+          <div className="grid md:grid-cols-4 gap-4">
+            <label className="flex flex-col">
+              <span className="text-sm text-[var(--text-muted)] mb-1">Select Employee</span>
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
               >
-                {downloading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 inline animate-spin" />{" "}
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 inline" /> Download PDF
-                  </>
-                )}
-              </button>
-            </div>
+                {loadingList && <option>Loading…</option>}
+                {!loadingList && employees.length === 0 && <option>No employees</option>}
+                {!loadingList &&
+                  employees.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.firstName} {e.lastName}
+                    </option>
+                  ))}
+              </select>
+            </label>
 
-            {/* Printable Payslip */}
-            <div
-              id="payslip"
-              className="bg-white text-black p-8 rounded-lg mt-6 shadow-md"
-            >
-              <h2 className="text-center font-bold text-2xl mb-4">
-                Salary Payslip
-              </h2>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <p>
-                  <strong>Employee:</strong> {form.name}
-                </p>
-                <p>
-                  <strong>Department:</strong> {form.department}
-                </p>
-                <p>
-                  <strong>Designation:</strong> {form.designation}
-                </p>
-                <p>
-                  <strong>Month:</strong> {form.month}
-                </p>
+            <label className="flex flex-col">
+              <span className="text-sm text-[var(--text-muted)] mb-1">Month (payslip period)</span>
+              <div className="relative">
+                <input
+                  type="month"
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] pr-10"
+                />
+               {/* <CalIcon className="w-4 h-4 absolute right-3 top-3 text-[var(--text-muted)]" /> */}
               </div>
+            </label>
+          </div>
 
-              <table className="w-full border text-sm mb-4">
-                <thead className="bg-gray-200">
-                  <tr>
-                    <th className="border p-2 text-left">Description</th>
-                    <th className="border p-2 text-right">Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="border p-2">Basic Salary</td>
-                    <td className="border p-2 text-right">
-                      {salary.toFixed(2)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border p-2">Provident Fund (12%)</td>
-                    <td className="border p-2 text-right">-{pf.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td className="border p-2">Tax (10%)</td>
-                    <td className="border p-2 text-right">-{tax.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td className="border p-2">ESI (0.75%)</td>
-                    <td className="border p-2 text-right">-{esi.toFixed(2)}</td>
-                  </tr>
-                  <tr className="font-bold bg-gray-100">
-                    <td className="border p-2">Net Pay</td>
-                    <td className="border p-2 text-right text-green-600">
-                      {netPay.toFixed(2)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <p className="text-center text-sm text-gray-600 mt-6">
-                This is a system-generated payslip — no signature required.
-              </p>
+          {/* Earnings / Deductions */}
+          <div className="grid md:grid-cols-2 gap-6 mt-6">
+            <div>
+              <h3 className="font-semibold mb-2">Earnings</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {( [
+                    ["basic", "Basic"],
+                    ["hra", "HRA"],
+                    ["conveyance", "Conveyance Allowance"],
+                    ["medical", "Medical"],
+                    ["bonus", "Bonus"],
+                    ["other", "Other"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="text-sm">
+                    <span className="text-[var(--text-muted)]">{label}</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
+                      placeholder="Enter amount ..."
+                      value={earnings[key] || ""}
+                      onChange={(e) => setEarn(key, e.target.value)}
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
-          </>
+            <div>
+              <h3 className="font-semibold mb-2">Deductions</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {( [
+                    ["epf", "EPF Contribution"],
+                    ["professionalTax", "Professional Tax"],
+                    ["other", "Other"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="text-sm">
+                    <span className="text-[var(--text-muted)]">{label}</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
+                      placeholder="Enter amount ..."
+                      value={deductions[key] || ""}
+                      onChange={(e) => setDed(key, e.target.value)}
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom actions (centered) */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="submit"
+              disabled={generating}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-70"
+            >
+              {generating ? (
+                <>
+                  <RefreshCcw className="w-4 h-4 animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>Generate Payslip</>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onDownloadPdf}
+              disabled={!showSlip || !emp}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-[var(--border-color)] disabled:opacity-50"
+              title={!showSlip ? "Generate a payslip first" : "Download PDF"}
+            >
+              <Download className="w-4 h-4" />
+              Download PDF
+            </button>
+          </div>
+        </form>
+
+        {/* Payslip Preview (only after success) */}
+        {showSlip && (
+          <div
+            ref={payslipRef}
+            id="payslip"
+            className="bg-white text-black rounded-lg border p-8 print:p-0"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-md bg-red-600 text-white font-black flex items-center justify-center">
+                  IN
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-800">Indyanet HRM</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500">Payslip for the Month</div>
+                <div className="text-sm font-semibold text-gray-800">{monthLabel(month)}</div>
+              </div>
+            </div>
+
+            {/* Employee Summary */}
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2 text-sm">
+              <Field label="Employee Name" value={`${emp?.firstName ?? ""} ${emp?.lastName ?? ""}`} />
+              <Field label="Designation" value={emp?.user?.role ?? "—"} />
+              <Field label="Employee ID" value={emp?.personNo ?? "—"} />
+              <Field label="Department" value={emp?.department ?? "—"} />
+              <Field
+                label="Date of Joining"
+                value={emp?.hireDate ? new Date(emp.hireDate).toLocaleDateString("en-GB") : "—"}
+              />
+              <Field label="Pay Period" value={monthLabel(month)} />
+              <Field label="Pay Date" value={new Date().toLocaleDateString("en-GB")} />
+              <Field label="PF A/C Number" value={emp?.bankDetail?.pfNumber ?? "—"} />
+              <Field label="UAN" value={emp?.bankDetail?.uan ?? "—"} />
+            </div>
+
+            {/* Earnings & Deductions */}
+            <div className="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+              <div className="grid grid-cols-2 bg-gray-50 text-gray-700 font-semibold text-sm">
+                <div className="px-4 py-2 border-r border-gray-200">EARNINGS</div>
+                <div className="px-4 py-2">DEDUCTIONS</div>
+              </div>
+              <div className="grid grid-cols-2">
+                <div className="border-r border-gray-200">
+                  <Row label="Basic" amount={earnings.basic} />
+                  <Row label="HRA" amount={earnings.hra} />
+                  <Row label="Conveyance Allowance" amount={earnings.conveyance} />
+                  <Row label="Medical" amount={earnings.medical} />
+                  <Row label="Bonus" amount={earnings.bonus} />
+                  <Row label="Other" amount={earnings.other} />
+                  <Row label="Gross Earnings" amount={grossEarnings} bold />
+                </div>
+                <div>
+                  <Row label="EPF Contribution" amount={deductions.epf} />
+                  <Row label="Professional Tax" amount={deductions.professionalTax} />
+                  <Row label="Other" amount={deductions.other} />
+                  <Row label="Total Deductions" amount={totalDeductions} bold />
+                </div>
+              </div>
+            </div>
+
+            {/* Net Pay */}
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              <div className="col-span-2 rounded-lg border border-green-200 bg-green-50 p-4">
+                <div className="text-xs text-gray-500">TOTAL NET PAYABLE</div>
+                <div className="text-lg font-semibold text-gray-800">{inr(netPay)}</div>
+              </div>
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-xs text-gray-500">Net Pay</div>
+                  <div className="text-2xl font-bold text-gray-900">{inr(netPay)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Amount in Words */}
+            <div className="mt-6 text-center text-xs text-gray-600">
+              Amount in words :{" "}
+              <span className="font-medium text-gray-800">
+                {toIndianWords(Math.round(netPay))}
+              </span>
+            </div>
+
+            <div className="mt-2 text-center text-[10px] text-gray-400">
+              This is a system generated payslip.
+            </div>
+
+            {/* Footer – signature */}
+            <div className="mt-10 flex items-center justify-between text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                  <UserRound className="w-4 h-4 text-gray-600" />
+                </div>
+                <div>
+                  <div className="font-medium text-gray-800">
+                    {emp ? `${emp.firstName} ${emp.lastName}` : "Employee"}
+                  </div>
+                  <div className="text-xs text-gray-500">{emp?.user?.role ?? "—"}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500">Authorized Signatory</div>
+                <div className="mt-6 border-t border-gray-300 w-40 ml-auto" />
+              </div>
+            </div>
+          </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ────────────────────── Little presentational bits ─────────────────────── */
+function Field({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="flex gap-2">
+      <span className="text-gray-500 w-36">{label} :</span>
+      <span className="text-gray-800 font-medium">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function Row({ label, amount, bold = false }: { label: string; amount: number; bold?: boolean }) {
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
+  return (
+    <div className={`grid grid-cols-2 text-sm ${bold ? "bg-gray-50 font-semibold" : ""}`}>
+      <div className="px-4 py-2 border-b border-gray-200">{label}</div>
+      <div className="px-4 py-2 border-b border-gray-200 text-right">{fmt(amount)}</div>
     </div>
   );
 }

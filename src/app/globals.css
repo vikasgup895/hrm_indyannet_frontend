@@ -63,3 +63,28 @@ body {
 .animate-fade-in-up {
   animation: fade-in-up 0.3s ease-out;
 }
+
+select option {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+select option:hover {
+  background-color: var(--hover-bg);
+  color: var(--button-hover-text);
+}
+
+
+/* FIX html2canvas lab() crash */
+#payslip * {
+  --background: white !important;
+  --card-bg: white !important;
+  --border-color: rgb(229 231 235) !important; /* gray-200 */
+  --text-primary: rgb(31 41 55) !important; /* gray-800 */
+  --text-muted: rgb(107 114 128) !important; /* gray-500 */
+}
+
+#payslip, #payslip * {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+}

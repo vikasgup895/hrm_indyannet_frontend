@@ -116,7 +116,7 @@
       const fetchData = async () => {
         try {
           const [empRes, policyRes] = await Promise.all([
-            api.get("/employees/basic"),
+            api.get("/employees/basic/all"),
             api.get("/leave/policies"),
           ]);
           setEmployees(empRes.data || []);

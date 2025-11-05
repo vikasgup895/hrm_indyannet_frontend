@@ -580,6 +580,7 @@ import {
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/context/ThemeProvider";
+import React from "react";
 
 /* -------------------------------------------
    Employee Type (extended with new fields)
@@ -772,8 +773,11 @@ export default function EmployeesAdminPage() {
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+  
     setSubmitting(true);
+  
     try {
+      // ✅ Only send the fields backend expects in CreateEmployeeDto
       const employeeData = {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -785,24 +789,23 @@ export default function EmployeesAdminPage() {
         address: form.address || undefined,
         educationQualification: form.educationQualification || undefined,
         birthdate: form.birthdate || undefined,
-        department: form.department,
-        location: form.location,
-        hireDate: form.hireDate || new Date().toISOString().split("T")[0],
-        salary: form.salary || "0",
-        currency: "INR",
+        department: form.department || undefined,
+        location: form.location || undefined,
+        hireDate: form.hireDate || new Date().toISOString(),
         status: form.status || "Active",
       };
-
+  
       const res = await api.post("/employees", employeeData, {
         headers: { Authorization: `Bearer ${token}` },
       });
+  
       const newEmployee = res.data;
-
+  
       // ✅ Upload document if selected
       if (selectedFile) {
         const formData = new FormData();
         formData.append("file", selectedFile);
-
+  
         await api.post(`/employees/${newEmployee.id}/upload`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -810,8 +813,11 @@ export default function EmployeesAdminPage() {
           },
         });
       }
-
-      setEmployees((prev) => [...prev, res.data]);
+  
+      // ✅ Update local state
+      setEmployees((prev) => [newEmployee, ...prev]);
+  
+      // ✅ Reset form
       setShowForm(false);
       setForm({
         firstName: "",
@@ -831,13 +837,23 @@ export default function EmployeesAdminPage() {
         status: "Active",
         salary: "",
       });
-    } catch (err) {
-      console.error("Failed to add employee:", err);
+      setSelectedFile(null);
+      setFormErrors({});
+  
+      console.log("✅ Employee added successfully");
+    } catch (err: any) {
+      console.error("❌ Failed to add employee:", err);
+      console.error("Server response:", err.response?.data);
+      alert(
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          "Failed to create employee"
+      );
     } finally {
       setSubmitting(false);
-      setSelectedFile(null);
     }
   };
+  
 
   /* -------------------------------------------
      Filtering
@@ -1149,9 +1165,8 @@ export default function EmployeesAdminPage() {
               </thead>
               <tbody className="divide-y divide-[var(--border-color)]">
                 {filteredEmployees.map((employee) => (
-                  <>
+                    <React.Fragment key={employee.id}>
                     <tr
-                      key={employee.id}
                       className="hover:bg-[var(--hover-bg)] transition-colors"
                     >
                       <td className="px-6 py-4">
@@ -1276,7 +1291,7 @@ export default function EmployeesAdminPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                    </React.Fragment>
                 ))}
               </tbody>
             </table>

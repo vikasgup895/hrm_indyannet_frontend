@@ -15,11 +15,9 @@ import {
 } from "lucide-react";
 import PayslipModal from "./PayslipModal";
 
-/* ────────────────────────────── */
 /* STATUS BADGE */
-/* ────────────────────────────── */
-const StatusBadge = ({ status }: { status: string }) => {
-  const isPaid = status === "Paid";
+const StatusBadge = ({ status }: { status?: string }) => {
+  const isPaid = status === "APPROVED" || status === "Paid";
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
@@ -38,9 +36,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-/* ────────────────────────────── */
 /* ACTION BUTTON */
-/* ────────────────────────────── */
 const ActionButton = ({
   onClick,
   children,
@@ -65,9 +61,7 @@ const ActionButton = ({
   );
 };
 
-/* ────────────────────────────── */
 /* PAYROLL TABLE */
-/* ────────────────────────────── */
 export default function PayrollTable({
   data,
   role,
@@ -99,8 +93,11 @@ export default function PayrollTable({
           </h3>
           <p className="text-sm text-[var(--text-muted)] mt-1">
             {data.length} employee{data.length !== 1 ? "s" : ""} •{" "}
-            {data.filter((r) => r.status === "Paid").length} processed this
-            month
+            {
+              data.filter((r) => r?.payrollRun?.status === "APPROVED")
+                .length
+            }{" "}
+            processed this month
           </p>
         </div>
 
@@ -109,14 +106,12 @@ export default function PayrollTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[var(--background)] border-b border-[var(--border-color)]">
-                {[
-                  { icon: User, label: "Employee" },
+                {[{ icon: User, label: "Employee" },
                   { icon: Building, label: "Department" },
                   { icon: DollarSign, label: "Salary" },
                   { icon: Calendar, label: "Period" },
                   { label: "Status" },
-                  { label: "Actions", align: "center" },
-                ].map((col, i) => (
+                  { label: "Actions", align: "center" }].map((col, i) => (
                   <th
                     key={i}
                     className={`px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] ${
@@ -172,12 +167,19 @@ export default function PayrollTable({
 
                     {/* Period */}
                     <td className="px-6 py-4 text-[var(--text-primary)]">
-                      {row.payrollRun?.periodEnd || "—"}
-                    </td>
+  {row.payrollRun?.periodEnd
+    ? new Date(row.payrollRun.periodEnd).toLocaleString("default", {
+        month: "long",
+        year: "numeric",
+      })
+    : "—"}
+</td>
+
+
 
                     {/* Status */}
                     <td className="px-6 py-4">
-                      <StatusBadge status={row.status} />
+                      <StatusBadge status={row.payrollRun?.status} />
                     </td>
 
                     {/* Actions */}
@@ -188,12 +190,12 @@ export default function PayrollTable({
                             <ActionButton
                               onClick={() => setSelected(row)}
                               variant={
-                                row.status === "Pending"
+                                row.payrollRun?.status === "PENDING"
                                   ? "primary"
                                   : "secondary"
                               }
                             >
-                              {row.status === "Pending" ? (
+                              {row.payrollRun?.status === "PENDING" ? (
                                 <>
                                   <CreditCard className="w-3 h-3" />
                                   Process
@@ -205,6 +207,7 @@ export default function PayrollTable({
                                 </>
                               )}
                             </ActionButton>
+
                             <ActionButton
                               onClick={() => setSelected(row)}
                               variant="secondary"

@@ -208,13 +208,13 @@ export default function PayrollTable({
                               )}
                             </ActionButton>
 
-                            <ActionButton
+                            {/* <ActionButton
                               onClick={() => setSelected(row)}
                               variant="secondary"
                             >
                               <FileText className="w-3 h-3" />
                               Payslip
-                            </ActionButton>
+                            </ActionButton> */}
                           </>
                         ) : (
                           <ActionButton

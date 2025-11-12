@@ -570,6 +570,7 @@ import {
   UserPlus,
   Building2,
   Briefcase,
+  UserCheck,
   GraduationCap,
   Mail,
   Phone,
@@ -581,6 +582,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/context/ThemeProvider";
 import React from "react";
+import { get } from "http";
 
 /* -------------------------------------------
    Employee Type (extended with new fields)
@@ -854,7 +856,48 @@ export default function EmployeesAdminPage() {
     }
   };
   
+  // inside the EmployeesAdminPage component (top-level of page.admin.tsx)
+  const deactivateEmployee = async (employeeId: string) => {
+    // simple confirmation
+    if (!window.confirm('Mark this employee as Inactive? This will change their status.')) return;
+  
+    try {
+      // call existing update endpoint (PUT /employees/:id) to update only the status
+      const res = await api.put(
+        `/employees/${employeeId}`,
+        { status: 'Inactive' },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+  
+      // update local state (immutable map)
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === employeeId ? { ...e, status: 'Inactive' } : e))
+      );
+  
+      alert('Employee marked as Inactive.');
+    } catch (err: any) {
+      console.error('Failed to deactivate employee:', err);
+      alert(err?.response?.data?.message || 'Failed to update status');
+    }
+  };
 
+  const getNewHireCount = (employees: any[]): number => {
+    if (!employees || employees.length === 0) return 0;
+  
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+  
+    return employees.filter(emp => {
+      if (!emp.hireDate) return false;
+      const hireDate = new Date(emp.hireDate);
+      return (
+        hireDate.getMonth() === currentMonth &&
+        hireDate.getFullYear() === currentYear
+      );
+    }).length;
+  };
+  
   /* -------------------------------------------
      Filtering
   -------------------------------------------- */
@@ -933,11 +976,11 @@ export default function EmployeesAdminPage() {
             label="Total Employees"
             value={employees.length}
           />
-          <StatsCard icon={Building2} label="Departments" value="7" />
-          <StatsCard icon={Briefcase} label="Projects" value="156" />
+          <StatsCard icon={UserCheck} label="Active Employees" value={employees.filter(e => e.status === 'Active').length} />
+          <StatsCard icon={UserPlus} label="New Hires (This Month)" value={getNewHireCount(employees)} />
           <StatsCard
             icon={GraduationCap}
-            label="Education Records"
+            label="Employee Records"
             value="Active"
           />
         </div>
@@ -1264,30 +1307,44 @@ export default function EmployeesAdminPage() {
                             </p>
                           </div>
                           <div className="col-span-full mt-4 border-t border-[var(--border-color)] pt-4">
-                            <h4 className="font-semibold mb-2 text-[var(--text-primary)]">
-                              Uploaded Documents
-                            </h4>
-                            {employee.documents?.length ? (
-                              <ul className="space-y-2">
-                                {employee.documents.map((doc) => (
-                                  <li key={doc.id}>
-                                    <a
-                                      href={`http://localhost:4000/${doc.storageUrl}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 hover:underline"
-                                    >
-                                      📄 {doc.title}
-                                    </a>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="text-sm text-[var(--text-muted)]">
-                                No documents uploaded.
-                              </p>
-                            )}
-                          </div>
+  <div className="flex items-center justify-between mb-2">
+    <h4 className="font-semibold text-[var(--text-primary)]">
+      Uploaded Documents
+    </h4>
+
+    {employee.status === 'Active' && (
+      <button
+        onClick={() => deactivateEmployee(employee.id)}
+        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm shadow-sm transition-all"
+        title="Mark employee as inactive"
+      >
+        Mark Inactive
+      </button>
+    )}
+  </div>
+
+  {employee.documents?.length ? (
+    <ul className="space-y-2">
+      {employee.documents.map((doc) => (
+        <li key={doc.id}>
+          <a
+            href={`http://localhost:4000/${doc.storageUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            📄 {doc.title}
+          </a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p className="text-sm text-[var(--text-muted)]">
+      No documents uploaded.
+    </p>
+  )}
+</div>
+
                         </td>
                       </tr>
                     )}

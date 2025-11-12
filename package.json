@@ -15,6 +15,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "framer-motion": "^12.23.24",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.12.1",
     "js-cookie": "^3.0.5",

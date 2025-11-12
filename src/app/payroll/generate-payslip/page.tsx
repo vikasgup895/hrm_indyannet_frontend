@@ -1,4 +1,3 @@
-
 // "use client";
 
 // import { useEffect, useMemo, useRef, useState } from "react";
@@ -215,27 +214,27 @@
 
 //   const handleSubmit = async (e: React.FormEvent) => {
 //     e.preventDefault();
-  
+
 //     if (!selectedEmployeeId) {
 //       alert("Please select an employee first.");
 //       return;
 //     }
-  
+
 //     setGenerating(true);
-  
+
 //     try {
 //       console.log("🔍 FETCHING PAYROLL RUNS...");
-  
+
 //       const runRes = await api.get("/payroll/runs", {
 //         headers: { Authorization: `Bearer ${token}` },
 //       });
-  
+
 //       console.log("📦 /payroll/runs response:", JSON.stringify(runRes.data, null, 2));
-  
+
 //       let run = runRes.data.find((r: any) =>
 //       monthLabel(r.periodEnd) === monthLabel(month) && r.status === "DRAFT"
 //     );
-    
+
 //     if (!run) {
 //       run = runRes.data
 //         .filter((r: any) => monthLabel(r.periodEnd) === monthLabel(month))
@@ -244,16 +243,12 @@
 //             new Date(b.periodEnd).getTime() - new Date(a.periodEnd).getTime()
 //         )[0];
 //     }
-    
+
 //     if (!run) {
 //       alert("❌ No payroll run found for this month.");
 //       return;
 //     }
-    
 
-
-      
-  
 //       const payload = {
 //         employeeId: selectedEmployeeId,
 //         runId: run.id,
@@ -262,18 +257,18 @@
 //         net: netPay,
 //         currency: "INR",
 //       };
-  
+
 //       console.log("📤 /payroll/generate payload:", payload);
-  
+
 //       const genRes = await api.post("/payroll/generate", payload, {
 //         headers: { Authorization: `Bearer ${token}` },
 //       });
-  
+
 //       console.log("✅ Payslip generated:", genRes.data);
 //       alert("✅ Payslip generated successfully!");
-  
+
 //       setShowSlip(true);
-  
+
 //       setTimeout(() => {
 //         payslipRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 //       }, 150);
@@ -285,7 +280,6 @@
 //       setGenerating(false);
 //     }
 //   };
-  
 
 //   // Bulletproof html2canvas: render from an off-screen, inlined clone
 //   const onDownloadPdf = async () => {
@@ -610,18 +604,16 @@
 //   );
 // }
 
-
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { downloadPayslipPDF } from "@/lib/payslip-pdf";
 import { useAuth } from "@/store/auth";
 import {
   Download,
   FileText,
-  Calendar as CalIcon,
   UserRound,
   ArrowLeft,
   RefreshCcw,
@@ -694,7 +686,18 @@ function toIndianWords(num: number): string {
     "Eighteen",
     "Nineteen",
   ];
-  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const tens = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
 
   const two = (n: number) =>
     n < 20
@@ -763,6 +766,20 @@ export default function PayslipPage() {
     professionalTax: 0,
     other: 0,
   });
+  // Track input field values as strings to avoid leading zeros
+  const [earningsInput, setEarningsInput] = useState({
+    basic: "",
+    hra: "",
+    conveyance: "",
+    medical: "",
+    bonus: "",
+    other: "",
+  });
+  const [deductionsInput, setDeductionsInput] = useState({
+    epf: "",
+    professionalTax: "",
+    other: "",
+  });
 
   const payslipRef = useRef<HTMLDivElement>(null);
 
@@ -777,7 +794,8 @@ export default function PayslipPage() {
         });
         const list = res.data || [];
         setEmployees(list);
-        if (list?.length && !selectedEmployeeId) setSelectedEmployeeId(list[0].id);
+        if (list?.length && !selectedEmployeeId)
+          setSelectedEmployeeId(list[0].id);
       } catch (e) {
         console.error("Failed to load employees:", e);
       } finally {
@@ -826,11 +844,22 @@ export default function PayslipPage() {
     [grossEarnings, totalDeductions]
   );
 
-  /* ─────────────────────────────── Handlers ─────────────────────────────── */
-  const setEarn = (key: keyof typeof earnings, v: number | string) =>
-    setEarnings((s) => ({ ...s, [key]: Number(v) || 0 }));
-  const setDed = (key: keyof typeof deductions, v: number | string) =>
-    setDeductions((s) => ({ ...s, [key]: Number(v) || 0 }));
+  const setEarn = (key: keyof typeof earnings, v: number | string) => {
+    const strValue = String(v);
+    setEarningsInput((s) => ({ ...s, [key]: strValue }));
+    const numValue = strValue === "" ? 0 : Number(strValue);
+    if (!isNaN(numValue)) {
+      setEarnings((s) => ({ ...s, [key]: numValue }));
+    }
+  };
+  const setDed = (key: keyof typeof deductions, v: number | string) => {
+    const strValue = String(v);
+    setDeductionsInput((s) => ({ ...s, [key]: strValue }));
+    const numValue = strValue === "" ? 0 : Number(strValue);
+    if (!isNaN(numValue)) {
+      setDeductions((s) => ({ ...s, [key]: numValue }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -881,6 +910,16 @@ export default function PayslipPage() {
         deductions: totalDeductions,
         net: netPay,
         currency: "INR",
+
+        basic: earnings.basic,
+        hra: earnings.hra,
+        conveyance: earnings.conveyance,
+        medical: earnings.medical,
+        bonus: earnings.bonus,
+        other: earnings.other,
+        epf: deductions.epf,
+        professionalTax: deductions.professionalTax,
+        otherDeduction: deductions.other,
       };
 
       await api.post("/payroll/generate", payload, {
@@ -891,11 +930,15 @@ export default function PayslipPage() {
       setShowSlip(true);
 
       setTimeout(() => {
-        payslipRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        payslipRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       }, 120);
     } catch (err: any) {
       console.error("❌ Error generating payslip:", err);
-      const msg = err?.response?.data?.message ?? err?.message ?? "Unknown error";
+      const msg =
+        err?.response?.data?.message ?? err?.message ?? "Unknown error";
       alert(`❌ ${msg}`);
     } finally {
       setGenerating(false);
@@ -903,60 +946,96 @@ export default function PayslipPage() {
   };
 
   // PDF: render from an off-screen, inlined clone (robust vs Tailwind)
-  const onDownloadPdf = async () => {
-    if (!payslipRef.current) return;
-    const source = payslipRef.current;
+  // const onDownloadPdf = async () => {
+  //   if (!payslipRef.current) return;
+  //   const source = payslipRef.current;
 
-    const clone = source.cloneNode(true) as HTMLElement;
-    clone.style.background = "white";
+  //   const clone = source.cloneNode(true) as HTMLElement;
+  //   clone.style.background = "white";
 
-    clone.querySelectorAll("*").forEach((node) => {
-      const el = node as HTMLElement;
-      el.style.color = "black";
-      el.style.backgroundColor = "white";
-      el.style.borderColor = "black";
-      el.style.boxShadow = "none";
-      el.style.filter = "none";
+  //   clone.querySelectorAll("*").forEach((node) => {
+  //     const el = node as HTMLElement;
+  //     el.style.color = "black";
+  //     el.style.backgroundColor = "white";
+  //     el.style.borderColor = "black";
+  //     el.style.boxShadow = "none";
+  //     el.style.filter = "none";
+  //   });
+
+  //   const container = document.createElement("div");
+  //   container.style.position = "fixed";
+  //   container.style.left = "-9999px";
+  //   container.appendChild(clone);
+  //   document.body.appendChild(container);
+
+  //   const canvas = await html2canvas(clone, {
+  //     scale: 2,
+  //     backgroundColor: "#fff",
+  //     useCORS: true,
+  //   });
+
+  //   document.body.removeChild(container);
+
+  //   const imgData = canvas.toDataURL("image/png");
+  //   const pdf = new jsPDF("p", "pt", "a4");
+
+  //   const pageWidth = pdf.internal.pageSize.getWidth();
+  //   const imgWidth = pageWidth - 40;
+  //   const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  //   pdf.addImage(imgData, "PNG", 20, 20, imgWidth, imgHeight);
+  //   const fileName = `Payslip_${emp?.firstName ?? "Employee"}_${monthLabel(month).replace(
+  //     " ",
+  //     "_"
+  //   )}.pdf`;
+  //   pdf.save(fileName);
+  // };
+  // 🧾 Download Payslip PDF (Full Screenshot-Matching Layout)
+  const onDownloadPdf = () => {
+    if (!emp) return alert("No employee selected.");
+
+    downloadPayslipPDF(null, {
+      employee: {
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        department: emp.department ?? undefined,
+        hireDate: emp.hireDate ?? undefined,
+      },
+      employeeId: emp.personNo,
+      email: emp.workEmail ?? "—",
+      payPeriod: monthLabel(month),
+      payDate: new Date().toLocaleDateString("en-GB"),
+      pfNumber: emp.bankDetail?.pfNumber ?? "—",
+      uan: emp.bankDetail?.uan ?? "—",
+      earnings: {
+        Basic: earnings.basic,
+        HRA: earnings.hra,
+        "Conveyance Allowance": earnings.conveyance,
+        Medical: earnings.medical,
+        Bonus: earnings.bonus,
+        Other: earnings.other,
+      },
+      deductions: {
+        "EPF Contribution": deductions.epf,
+        "Professional Tax": deductions.professionalTax,
+        Other: deductions.other,
+      },
+      gross: grossEarnings,
+      totalDeductions: totalDeductions,
+      net: netPay,
+      netWords: toIndianWords(Math.round(netPay)),
     });
-
-    const container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.left = "-9999px";
-    container.appendChild(clone);
-    document.body.appendChild(container);
-
-    const canvas = await html2canvas(clone, {
-      scale: 2,
-      backgroundColor: "#fff",
-      useCORS: true,
-    });
-
-    document.body.removeChild(container);
-
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "pt", "a4");
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const imgWidth = pageWidth - 40;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 20, 20, imgWidth, imgHeight);
-    const fileName = `Payslip_${emp?.firstName ?? "Employee"}_${monthLabel(month).replace(
-      " ",
-      "_"
-    )}.pdf`;
-    pdf.save(fileName);
   };
 
   /* ──────────────────────────────── Render ──────────────────────────────── */
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)] px-4 py-6">
+    <div className="min-h-screen bg-(--background) text-(--text-primary) px-4 py-6">
       <div className="mx-auto max-w-6xl">
         {/* Top bar with Back */}
         <div className="mb-3">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--card-bg)]"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-(--border-color) hover:bg-(--card-bg)"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm">Back</span>
@@ -970,19 +1049,23 @@ export default function PayslipPage() {
         {/* Form card */}
         <form
           onSubmit={handleSubmit}
-          className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-4 mb-6"
+          className="bg-(--card-bg) border border-(--border-color) rounded-xl p-4 mb-6"
         >
           {/* Inputs row */}
           <div className="grid md:grid-cols-4 gap-4">
             <label className="flex flex-col">
-              <span className="text-sm text-[var(--text-muted)] mb-1">Select Employee</span>
+              <span className="text-sm text-(--text-muted) mb-1">
+                Select Employee
+              </span>
               <select
                 value={selectedEmployeeId}
                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
+                className="px-3 py-2 rounded-lg border border-(--border-color) bg-(--card-bg)"
               >
                 {loadingList && <option>Loading…</option>}
-                {!loadingList && employees.length === 0 && <option>No employees</option>}
+                {!loadingList && employees.length === 0 && (
+                  <option>No employees</option>
+                )}
                 {!loadingList &&
                   employees.map((e) => (
                     <option key={e.id} value={e.id}>
@@ -993,15 +1076,16 @@ export default function PayslipPage() {
             </label>
 
             <label className="flex flex-col">
-              <span className="text-sm text-[var(--text-muted)] mb-1">Month (payslip period)</span>
+              <span className="text-sm text-(--text-muted) mb-1">
+                Month (payslip period)
+              </span>
               <div className="relative">
                 <input
                   type="month"
                   value={month}
                   onChange={(e) => setMonth(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] pr-10"
+                  className=" px-2 py-2 rounded-lg border border-(--border-color) bg-(--card-bg) pr-1"
                 />
-               {/* <CalIcon className="w-4 h-4 absolute right-3 top-3 text-[var(--text-muted)]" /> */}
               </div>
             </label>
           </div>
@@ -1011,7 +1095,8 @@ export default function PayslipPage() {
             <div>
               <h3 className="font-semibold mb-2">Earnings</h3>
               <div className="grid grid-cols-2 gap-3">
-                {( [
+                {(
+                  [
                     ["basic", "Basic"],
                     ["hra", "HRA"],
                     ["conveyance", "Conveyance Allowance"],
@@ -1027,7 +1112,7 @@ export default function PayslipPage() {
                       inputMode="decimal"
                       className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
                       placeholder="Enter amount ..."
-                      value={earnings[key] || ""}
+                      value={earningsInput[key]}
                       onChange={(e) => setEarn(key, e.target.value)}
                     />
                   </label>
@@ -1037,20 +1122,21 @@ export default function PayslipPage() {
             <div>
               <h3 className="font-semibold mb-2">Deductions</h3>
               <div className="grid grid-cols-2 gap-3">
-                {( [
+                {(
+                  [
                     ["epf", "EPF Contribution"],
                     ["professionalTax", "Professional Tax"],
                     ["other", "Other"],
                   ] as const
                 ).map(([key, label]) => (
                   <label key={key} className="text-sm">
-                    <span className="text-[var(--text-muted)]">{label}</span>
+                    <span className="text-(--text-muted)">{label}</span>
                     <input
                       type="number"
                       inputMode="decimal"
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-(--border-color) bg-(--card-bg)"
                       placeholder="Enter amount ..."
-                      value={deductions[key] || ""}
+                      value={deductionsInput[key]}
                       onChange={(e) => setDed(key, e.target.value)}
                     />
                   </label>
@@ -1079,7 +1165,7 @@ export default function PayslipPage() {
               type="button"
               onClick={onDownloadPdf}
               disabled={!showSlip || !emp}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-[var(--border-color)] disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-(--border-color) disabled:opacity-50"
               title={!showSlip ? "Generate a payslip first" : "Download PDF"}
             >
               <Download className="w-4 h-4" />
@@ -1102,42 +1188,66 @@ export default function PayslipPage() {
                   IN
                 </div>
                 <div>
-                  <div className="font-semibold text-gray-800">Indyanet HRM</div>
+                  <div className="font-semibold text-gray-800">
+                    Indyanet HRM
+                  </div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-gray-500">Payslip for the Month</div>
-                <div className="text-sm font-semibold text-gray-800">{monthLabel(month)}</div>
+                <div className="text-xs text-gray-500">
+                  Payslip for the Month
+                </div>
+                <div className="text-sm font-semibold text-gray-800">
+                  {monthLabel(month)}
+                </div>
               </div>
             </div>
 
             {/* Employee Summary */}
             <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2 text-sm">
-              <Field label="Employee Name" value={`${emp?.firstName ?? ""} ${emp?.lastName ?? ""}`} />
+              <Field
+                label="Employee Name"
+                value={`${emp?.firstName ?? ""} ${emp?.lastName ?? ""}`}
+              />
               <Field label="Designation" value={emp?.user?.role ?? "—"} />
               <Field label="Employee ID" value={emp?.personNo ?? "—"} />
               <Field label="Department" value={emp?.department ?? "—"} />
               <Field
                 label="Date of Joining"
-                value={emp?.hireDate ? new Date(emp.hireDate).toLocaleDateString("en-GB") : "—"}
+                value={
+                  emp?.hireDate
+                    ? new Date(emp.hireDate).toLocaleDateString("en-GB")
+                    : "—"
+                }
               />
               <Field label="Pay Period" value={monthLabel(month)} />
-              <Field label="Pay Date" value={new Date().toLocaleDateString("en-GB")} />
-              <Field label="PF A/C Number" value={emp?.bankDetail?.pfNumber ?? "—"} />
+              <Field
+                label="Pay Date"
+                value={new Date().toLocaleDateString("en-GB")}
+              />
+              <Field
+                label="PF A/C Number"
+                value={emp?.bankDetail?.pfNumber ?? "—"}
+              />
               <Field label="UAN" value={emp?.bankDetail?.uan ?? "—"} />
             </div>
 
             {/* Earnings & Deductions */}
             <div className="mt-6 border border-gray-200 rounded-lg overflow-hidden">
               <div className="grid grid-cols-2 bg-gray-50 text-gray-700 font-semibold text-sm">
-                <div className="px-4 py-2 border-r border-gray-200">EARNINGS</div>
+                <div className="px-4 py-2 border-r border-gray-200">
+                  EARNINGS
+                </div>
                 <div className="px-4 py-2">DEDUCTIONS</div>
               </div>
               <div className="grid grid-cols-2">
                 <div className="border-r border-gray-200">
                   <Row label="Basic" amount={earnings.basic} />
                   <Row label="HRA" amount={earnings.hra} />
-                  <Row label="Conveyance Allowance" amount={earnings.conveyance} />
+                  <Row
+                    label="Conveyance Allowance"
+                    amount={earnings.conveyance}
+                  />
                   <Row label="Medical" amount={earnings.medical} />
                   <Row label="Bonus" amount={earnings.bonus} />
                   <Row label="Other" amount={earnings.other} />
@@ -1145,7 +1255,10 @@ export default function PayslipPage() {
                 </div>
                 <div>
                   <Row label="EPF Contribution" amount={deductions.epf} />
-                  <Row label="Professional Tax" amount={deductions.professionalTax} />
+                  <Row
+                    label="Professional Tax"
+                    amount={deductions.professionalTax}
+                  />
                   <Row label="Other" amount={deductions.other} />
                   <Row label="Total Deductions" amount={totalDeductions} bold />
                 </div>
@@ -1156,12 +1269,16 @@ export default function PayslipPage() {
             <div className="mt-4 grid grid-cols-3 gap-4">
               <div className="col-span-2 rounded-lg border border-green-200 bg-green-50 p-4">
                 <div className="text-xs text-gray-500">TOTAL NET PAYABLE</div>
-                <div className="text-lg font-semibold text-gray-800">{inr(netPay)}</div>
+                <div className="text-lg font-semibold text-gray-800">
+                  {inr(netPay)}
+                </div>
               </div>
               <div className="rounded-lg border border-green-200 bg-green-50 p-4 flex items-center justify-center">
                 <div className="text-center">
                   <div className="text-xs text-gray-500">Net Pay</div>
-                  <div className="text-2xl font-bold text-gray-900">{inr(netPay)}</div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {inr(netPay)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1188,11 +1305,15 @@ export default function PayslipPage() {
                   <div className="font-medium text-gray-800">
                     {emp ? `${emp.firstName} ${emp.lastName}` : "Employee"}
                   </div>
-                  <div className="text-xs text-gray-500">{emp?.user?.role ?? "—"}</div>
+                  <div className="text-xs text-gray-500">
+                    {emp?.user?.role ?? "—"}
+                  </div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-gray-500">Authorized Signatory</div>
+                <div className="text-xs text-gray-500">
+                  Authorized Signatory
+                </div>
                 <div className="mt-6 border-t border-gray-300 w-40 ml-auto" />
               </div>
             </div>
@@ -1204,7 +1325,13 @@ export default function PayslipPage() {
 }
 
 /* ────────────────────── Little presentational bits ─────────────────────── */
-function Field({ label, value }: { label: string; value?: string | number | null }) {
+function Field({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | number | null;
+}) {
   return (
     <div className="flex gap-2">
       <span className="text-gray-500 w-36">{label} :</span>
@@ -1213,13 +1340,30 @@ function Field({ label, value }: { label: string; value?: string | number | null
   );
 }
 
-function Row({ label, amount, bold = false }: { label: string; amount: number; bold?: boolean }) {
+function Row({
+  label,
+  amount,
+  bold = false,
+}: {
+  label: string;
+  amount: number;
+  bold?: boolean;
+}) {
   const fmt = (n: number) =>
-    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+    }).format(n);
   return (
-    <div className={`grid grid-cols-2 text-sm ${bold ? "bg-gray-50 font-semibold" : ""}`}>
+    <div
+      className={`grid grid-cols-2 text-sm ${
+        bold ? "bg-gray-50 font-semibold" : ""
+      }`}
+    >
       <div className="px-4 py-2 border-b border-gray-200">{label}</div>
-      <div className="px-4 py-2 border-b border-gray-200 text-right">{fmt(amount)}</div>
+      <div className="px-4 py-2 border-b border-gray-200 text-right">
+        {fmt(amount)}
+      </div>
     </div>
   );
 }

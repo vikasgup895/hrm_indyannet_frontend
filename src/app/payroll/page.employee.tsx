@@ -1,18 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState,useRef } from "react";
 import { Wallet, FileText, Calendar, Download } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import PayrollCard from "./components/PayrollCard";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+
 import { useTheme } from "@/context/ThemeProvider"; // ✅ added
+import { downloadPayslipPDF } from "@/lib/payslip-pdf";
+
+
 
 export default function PayrollEmployeePage() {
   const { token } = useAuth();
-  const { theme } = useTheme(); // ✅ use global theme
+  const { theme } = useTheme(); // ✅ added
+  const payslipRef = useRef<HTMLDivElement | null>(null);
   const [payslip, setPayslip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,102 +58,43 @@ export default function PayrollEmployeePage() {
       };
 
   // 🧾 Generate PDF Payslip
+  // 🧾 Generate PDF Payslip
   const handleDownload = () => {
-    if (!payslip) return alert("❌ No payslip data found.");
-
-    const doc = new jsPDF();
-    const margin = 15;
-    const currency = payslip.currency || "INR";
-    const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₹";
-
-    // Header
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("Salary Payslip", 105, margin, { align: "center" });
-
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text("HRM System Pvt. Ltd.", 105, margin + 8, { align: "center" });
-    doc.text("www.company.com | payroll@company.com", 105, margin + 14, {
-      align: "center",
-    });
-
-    // Divider
-    doc.setDrawColor(180);
-    doc.line(15, margin + 18, 195, margin + 18);
-
-    // Employee Info
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(0);
-    doc.text("Employee Details", margin, margin + 28);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(
-      `Name: ${payslip.employee.firstName} ${payslip.employee.lastName}`,
-      margin,
-      margin + 36
-    );
-    doc.text(`Employee ID: ${payslip.employee.id}`, margin, margin + 42);
-    doc.text(`Department: ${payslip.employee.department}`, margin, margin + 48);
-    doc.text(
-      `Month: ${new Date(payslip.payrollRun.periodStart).toLocaleString(
-        "default",
-        { month: "long", year: "numeric" }
-      )}`,
-      margin,
-      margin + 54
-    );
-
-    const gross = payslip.gross.toFixed(2);
-    const deductions = payslip.deductions?.toFixed(2) || "0.00";
-    const net = payslip.net.toFixed(2);
-
-    const tableData = [
-      ["Basic Salary", `${symbol} ${gross}`],
-      [
-        "Provident Fund (12%)",
-        `- ${symbol} ${(payslip.gross * 0.12).toFixed(2)}`,
-      ],
-      ["Tax (10%)", `- ${symbol} ${(payslip.gross * 0.1).toFixed(2)}`],
-      ["ESI (0.75%)", `- ${symbol} ${(payslip.gross * 0.0075).toFixed(2)}`],
-      ["Total Deductions", `- ${symbol} ${deductions}`],
-      ["Net Pay", `${symbol} ${net}`],
-    ];
-
-    autoTable(doc, {
-      startY: margin + 64,
-      head: [["Description", "Amount"]],
-      body: tableData,
-      theme: "grid",
-      styles: { fontSize: 11, cellPadding: 4 },
-      headStyles: {
-        fillColor: [33, 150, 243],
-        textColor: 255,
-        halign: "center",
+    if (!payslip) return alert("No payslip data found.");
+    // Pass detailed data object to match full design
+    downloadPayslipPDF(null, {
+      employee: payslip.employee || {},
+      employeeId: payslip.employeeId,
+      email: payslip.workEmail || "—",
+      payPeriod: `${payslip.payrollRun?.periodStart?.slice(0, 10)} - ${payslip.payrollRun?.periodEnd?.slice(0, 10)}`,
+      payDate: payslip.payrollRun?.payDate,
+      pfNumber: payslip.employee?.bankDetail?.pfNumber,
+      uan: payslip.employee?.bankDetail?.uan,
+      earnings: payslip.earnings || {
+        Basic: payslip.basic || 0,
+        HRA: payslip.hra || 0,
+        "Conveyance Allowance": payslip.conveyance || 0,
+        Medical: payslip.medical || 0,
+        Bonus: payslip.bonus || 0,
+        Other: payslip.other || 0,
       },
-      columnStyles: {
-        0: { cellWidth: 100 },
-        1: { cellWidth: 60, halign: "right" },
+      deductions: {
+        "EPF Contribution": payslip.epf || 0,
+        "Professional Tax": payslip.professionalTax || 0,
+        Other: payslip.otherDeduction || 0,
       },
+      gross: payslip.gross,
+      totalDeductions:
+        (payslip.epf || 0) +
+        (payslip.professionalTax || 0) +
+        (payslip.otherDeduction || 0),
+      net: payslip.net,
+      netWords: payslip.net ? `${payslip.net} Rupees Only` : "",
     });
-
-    const finalY = (doc as any).lastAutoTable.finalY || margin + 100;
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(
-      "This is a computer-generated payslip and does not require signature.",
-      105,
-      finalY + 10,
-      { align: "center" }
-    );
-
-    const filename = `Payslip_${payslip.employee.firstName}_${new Date()
-      .toISOString()
-      .slice(0, 10)}.pdf`;
-    doc.save(filename);
   };
+  
+  
+
 
   return (
     <main className="p-6 space-y-6 min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
@@ -205,7 +149,7 @@ export default function PayrollEmployeePage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto border border-[var(--border-color)] rounded-xl bg-[var(--card-bg)] transition-colors">
+          <div ref={payslipRef} className="overflow-x-auto border border-[var(--border-color)] rounded-xl bg-[var(--card-bg)] transition-colors">
             <table className="min-w-full text-sm text-[var(--text-primary)]">
               <thead>
                 <tr className="bg-[var(--hover-bg)] text-[var(--text-muted)] text-left">

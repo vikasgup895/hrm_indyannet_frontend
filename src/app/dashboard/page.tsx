@@ -7,7 +7,7 @@ import DashboardEmployee from "./page.employee";
 export default function DashboardPage() {
   const { role } = useAuth();
 
-  if (role === "ADMIN") return <DashboardAdmin />;
+  if (role === "ADMIN" || role === "HR") return <DashboardAdmin />;
   if (role === "EMPLOYEE") return <DashboardEmployee />;
 
   return (

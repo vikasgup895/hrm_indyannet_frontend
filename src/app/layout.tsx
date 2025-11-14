@@ -153,7 +153,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 label="Dashboard"
                 open={sidebarOpen}
               />
-              {role === "ADMIN" && (
+              {(role === "ADMIN" || role === "HR") && (
                 <SidebarLink
                   href="/employees"
                   icon={<Users size={18} />}
@@ -175,7 +175,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               />
 
               {/* 🧾 Insurance section with sub-items */}
-              {role === "ADMIN" ? (
+              {(role === "ADMIN" || role === "HR") ? (
                 <div className="space-y-1">
                   {/* Parent menu item */}
                   <button
@@ -359,7 +359,7 @@ function Header({ role }: { role: string }) {
           Role: <strong>{role}</strong>
         </span>
         <div className="w-9 h-9 rounded-full border border-[var(--border-color)] flex items-center justify-center font-bold text-sm bg-blue-600 text-white shadow-sm">
-          {role?.toLowerCase() === "admin" ? "A" : "E"}
+          {role?.toLowerCase() === "admin" ? "A" : role?.toLowerCase() === "hr" ? "H" : "E"}
         </div>
       </div>
     </header>

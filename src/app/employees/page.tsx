@@ -7,7 +7,7 @@ import EmployeesEmployeePage from "../profile/page.employee";
 export default function EmployeesPage() {
   const { role } = useAuth();
 
-  if (role === "ADMIN") return <EmployeesAdminPage />;
+  if (role === "ADMIN" || role === "HR") return <EmployeesAdminPage />;
   if (role === "EMPLOYEE") return <EmployeesEmployeePage />;
 
   return (

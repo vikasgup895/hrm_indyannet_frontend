@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/context/ThemeProvider";
+
 import {
   User,
   Mail,
@@ -24,632 +25,622 @@ import {
   X,
   Save,
   RefreshCcw,
-  MapIcon,
-  Landmark
+  Landmark,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
+/* =========================================================================
+   TYPES
+   ========================================================================= */
 type EmployeeProfile = {
-  bankDetail: any;
+  bankDetail: {
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    branch?: string;
+    pfNumber?: string;
+    uan?: string;
+  } | null;
+
   id: string;
   personNo: string;
   firstName: string;
   lastName: string;
   workEmail: string;
+
   phone?: string;
-  department?: string;
+  gender?: string;
+  address?: string;
+  emergencyContact?: string;
+  educationQualification?: string;
+  birthdate?: string;
   location?: string;
+
+  department?: string;
   status: string;
   hireDate: string;
+
   manager?: {
     id: string;
     firstName: string;
     lastName: string;
   };
+
   user?: {
     email: string;
     role: string;
   };
-  // optional editable fields
-  accountNumber?: string;
-  ifscCode?: string;
-  bankName?: string;
-  branchName?: string;
-  uanNumber?: string;
-  pfNumber?: string;
 };
 
-const InfoCard = ({
-  icon: Icon,
-  label,
-  value,
-  copyable = false,
-}: {
-  icon: any;
-  label: string;
-  value?: string | null;
-  copyable?: boolean;
-}) => {
+/* =========================================================================
+   REUSABLE INPUT FIELD
+   ========================================================================= */
+const InputField = React.memo((props: any) => {
+  const { label, name, value, onChange, type = "text", placeholder = "" } = props;
+
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-[var(--text-primary)]">
+        {label}
+      </label>
+
+      <input
+        type={type}
+        name={name}
+        value={value ?? ""}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="
+          w-full p-2.5 rounded-lg border 
+          border-[var(--border-color)]
+          bg-[var(--card-bg)]
+          text-[var(--text-primary)]
+          focus:ring-2 focus:ring-indigo-400
+          outline-none transition
+        "
+      />
+    </div>
+  );
+});
+
+/* =========================================================================
+   CARD INFO COMPONENT
+   ========================================================================= */
+function CardInfo({ icon: Icon, label, value, copyable = false }: any) {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
+      setTimeout(() => setCopied(false), 1200);
+    } catch {}
   };
 
   return (
-    <div className="group bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg p-4 hover:bg-[var(--hover-bg)] transition-all duration-200">
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 p-2 bg-blue-500/10 rounded-lg">
-          <Icon className="w-5 h-5 text-blue-500" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-[var(--text-muted)] mb-1">
-            {label}
-          </p>
-          <p className="text-base font-semibold text-[var(--text-primary)] break-words">
-            {value || "—"}
-          </p>
-        </div>
-        {copyable && value && (
-          <button
-            onClick={() => copyToClipboard(value)}
-            className="flex-shrink-0 p-1.5 text-gray-400 hover:text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Copy to clipboard"
-          >
-            {copied ? (
-              <CheckCircle2 className="w-4 h-4 text-green-400" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-          </button>
-        )}
+    <div
+      className="
+        flex items-center gap-4 p-3 rounded-lg 
+        bg-[var(--card-bg)] border border-[var(--border-color)]
+      "
+    >
+      <div className="p-2 rounded-md bg-gradient-to-tr from-indigo-500 to-cyan-400 ">
+        <Icon className="w-5 h-5 text-white dark:text-white" />
       </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-[var(--text-muted)]">{label}</p>
+        <p className="text-sm font-semibold text-[var(--text-primary)] break-words">
+          {value ?? "—"}
+        </p>
+      </div>
+
+      {copyable && value && (
+        <button
+          onClick={() => copyToClipboard(value)}
+          className="p-1.5 rounded-md hover:bg-[var(--hover-bg)]"
+        >
+          {copied ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          ) : (
+            <Copy className="w-4 h-4 text-[var(--text-primary)]" />
+          )}
+        </button>
+      )}
     </div>
   );
-};
+}
 
+/* =========================================================================
+   PAGE COMPONENT
+   ========================================================================= */
 export default function EmployeesEmployeePage() {
   const { token, role } = useAuth();
   const { theme } = useTheme();
+
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
-  const [editModel, setEditModel] = useState<Partial<EmployeeProfile>>({});
   const [saving, setSaving] = useState(false);
 
+  const [editModel, setEditModel] = useState<any>({
+    phone: "",
+    gender: "",
+    address: "",
+    emergencyContact: "",
+    educationQualification: "",
+    birthdate: "",
+    location: "",
+    bankName: "",
+    accountNumber: "",
+    ifscCode: "",
+    branchName: "",
+    pfNumber: "",
+    uanNumber: "",
+  });
+
+  const [showSensitive, setShowSensitive] = useState({
+    accountNumber: false,
+    pfNumber: false,
+    uanNumber: false,
+  });
+
+  /* ----------------------------------------------
+     LOAD PROFILE
+     ---------------------------------------------- */
   useEffect(() => {
-    const fetchProfile = async () => {
+    const load = async () => {
       try {
-        if (!token) {
-          setError("Please login to view your profile");
-          setLoading(false);
-          return;
-        }
-        const response = await api.get("/employees/profile/me", {
+        const res = await api.get("/employees/profile/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setProfile(response.data);
-      } catch (err: any) {
-        console.error("Failed to fetch profile:", err);
-        if (err.response?.status === 404) {
-          setError("Employee profile not found. Please contact HR.");
-        } else if (err.response?.status === 401) {
-          setError("Session expired. Please login again.");
-        } else {
-          setError("Failed to load profile. Please try again.");
-        }
+
+        setProfile(res.data);
+
+        const p = res.data;
+        setEditModel({
+          phone: p.phone ?? "",
+          gender: p.gender ?? "",
+          address: p.address ?? "",
+          emergencyContact: p.emergencyContact ?? "",
+          educationQualification: p.educationQualification ?? "",
+          birthdate: p.birthdate ?? "",
+          location: p.location ?? "",
+          bankName: p.bankDetail?.bankName ?? "",
+          accountNumber: p.bankDetail?.accountNumber ?? "",
+          ifscCode: p.bankDetail?.ifscCode ?? "",
+          branchName: p.bankDetail?.branch ?? "",
+          pfNumber: p.bankDetail?.pfNumber ?? "",
+          uanNumber: p.bankDetail?.uan ?? "",
+        });
+      } catch {
+        setError("Failed to load profile");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
+    load();
   }, [token]);
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Not specified";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const openEditor = () => setEditing(true);
+
+  const handleEditChange = (e: any) => {
+    const { name, value } = e.target;
+    setEditModel((prev: any) => ({ ...prev, [name]: value }));
   };
 
-  const getYearsOfService = (hireDate?: string) => {
-    if (!hireDate) return "Not specified";
-    const hired = new Date(hireDate);
-    const now = new Date();
-    const years = now.getFullYear() - hired.getFullYear();
-    const months = now.getMonth() - hired.getMonth();
-    if (years === 0) {
-      const m = months >= 0 ? months : 0;
-      return `${m} month${m !== 1 ? "s" : ""}`;
-    }
-    return `${years} year${years !== 1 ? "s" : ""}`;
+  const toggleSensitive = (key: keyof typeof showSensitive) => {
+    setShowSensitive((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const formatPhoneNumber = (phone?: string) => {
-    if (!phone) return "";
-    return phone.replace(/(\+\d{2})-?(\d{4})(\d{3})(\d{3})/, "$1 $2 $3 $4");
-  };
-
-  // open editor (prefill)
-  const openEditor = () => {
-    if (!profile) return;
-    setEditModel({
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      phone: profile.phone,
-      accountNumber: profile.accountNumber,
-      ifscCode: profile.ifscCode,
-      bankName: profile.bankName,
-      branchName: profile.branchName,
-      uanNumber: profile.uanNumber,
-      pfNumber: profile.pfNumber,
-    });
-    setEditing(true);
-  };
-
-  // handle inputs in editor
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditModel((s) => ({ ...(s || {}), [e.target.name]: e.target.value }));
-  };
-
-  // save profile changes
+  /* ----------------------------------------------
+     SAVE PROFILE
+     ---------------------------------------------- */
   const handleSave = async () => {
-    if (!token || !profile) return;
     setSaving(true);
-  
+
+    const payload: any = {
+      phone: editModel.phone,
+      gender: editModel.gender,
+      address: editModel.address,
+      emergencyContact: editModel.emergencyContact,
+      educationQualification: editModel.educationQualification,
+      birthdate: editModel.birthdate,
+      location: editModel.location,
+      bankDetail: {
+        bankName: editModel.bankName,
+        accountNumber: editModel.accountNumber,
+        ifscCode: editModel.ifscCode,
+        branch: editModel.branchName,
+        pfNumber: editModel.pfNumber,
+        uan: editModel.uanNumber,
+      },
+    };
+
+    // Remove empty values
+    Object.keys(payload).forEach((k) => payload[k] ?? delete payload[k]);
+    Object.keys(payload.bankDetail).forEach(
+      (k) => payload.bankDetail[k] ?? delete payload.bankDetail[k]
+    );
+    if (Object.keys(payload.bankDetail).length === 0) delete payload.bankDetail;
+
     try {
-      // ✅ Build clean payload structure
-      const payload = {
-        firstName: editModel.firstName,
-        lastName: editModel.lastName,
-        phone: editModel.phone,
-        // ✅ Backend expects nested "bankDetail" object
-        bankDetail: {
-          bankName: editModel.bankName,
-          accountNumber: editModel.accountNumber,
-          ifscCode: editModel.ifscCode,
-          branch: editModel.branchName,
-          pfNumber: editModel.pfNumber,
-          uan: editModel.uanNumber,
-        },
-      };
-  
-      // ✅ Remove empty/null/undefined values for clean payload
-      Object.keys(payload).forEach((key) => {
-        const val = (payload as any)[key];
-        if (val === undefined || val === null || val === "") {
-          delete (payload as any)[key];
-        }
-      });
-      if ((payload as any).bankDetail) {
-        Object.keys((payload as any).bankDetail).forEach((key) => {
-          const val = (payload as any).bankDetail[key];
-          if (val === undefined || val === null || val === "") {
-            delete (payload as any).bankDetail[key];
-          }
-        });
-      }
-
-      //  console.log(
-      //    "🟦 Sending payload to server:",
-      //    JSON.stringify(payload, null, 2)
-      //  );
-
-      // ✅ Send request
       const res = await api.put("/employees/me", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
-    //  console.log("🟩 Server raw response:", res.data);
-  
-      // ✅ If backend returns updated data, merge into profile
-      if (res?.data) {
-        setProfile((prev) => ({
-          ...(prev as any),
-          ...(res.data as any),
-          bankDetail: res.data.bankDetail || (prev as any).bankDetail,
-        }));
-      } else {
-        // fallback: refetch if no response body
-        const refetch = await api.get("/employees/profile/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setProfile(refetch.data);
-      }
-  
+
+      setProfile(res.data);
       setEditing(false);
-    //  console.log("✅ Profile updated successfully", payload);
-      alert("Profile updated successfully");
-    } catch (err: any) {
-      console.error("❌ Failed to update profile:", err);
-      alert(err?.response?.data?.message || "Failed to update profile");
+    } catch {
+      alert("Failed to update");
     } finally {
       setSaving(false);
     }
   };
-  
-  // cancel editing
-  const handleCancel = () => {
-    setEditing(false);
-  };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--background)] transition-colors">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-lg font-medium text-[var(--text-muted)]">
-            Loading your profile...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--background)] transition-colors p-4">
-        <div className="bg-[var(--card-bg)] rounded-xl p-8 shadow-lg border border-red-800 max-w-md mx-auto text-center">
-          <div className="p-3 bg-red-900/30 rounded-full w-16 h-16 mx-auto mb-4">
-            <User className="w-10 h-10 text-red-400" />
-          </div>
-          <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-            Profile Error
-          </h2>
-          <p className="text-[var(--text-muted)] mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--background)] transition-colors p-4">
-        <div className="bg-[var(--card-bg)] rounded-xl p-8 shadow-lg border border-[var(--border-color)] max-w-md mx-auto text-center">
-          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-            No Profile Found
-          </h2>
-          <p className="text-[var(--text-muted)]">
-            Please contact HR to set up your employee profile.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  /* =========================================================================
+     RENDER
+     ========================================================================= */
+  if (loading) return <div className="p-20">Loading...</div>;
+  if (error) return <div className="p-20 text-red-600">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header with Edit button top-right */}
-        <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--border-color)] mb-8 transition-colors">
-          <div className="p-8">
-            <div className="flex items-start gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-2xl font-bold text-white">
-                    {(profile.firstName?.[0] || "").toUpperCase()}
-                    {(profile.lastName?.[0] || "").toUpperCase()}
-                  </span>
-                </div>
+    <div className="min-h-screen bg-[var(--background)] py-10 px-4">
+      <div className="max-w-6xl mx-auto space-y-10">
+
+        {/* -------------------------------------------------------------
+            HEADER CARD
+        ------------------------------------------------------------- */}
+        <div className="rounded-2xl border border-[var(--border-color)] p-6 bg-[var(--card-bg)] shadow-sm">
+          <div className="flex justify-between flex-col md:flex-row gap-6">
+
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-3xl font-bold">
+                {profile!.firstName[0]}
+                {profile!.lastName[0]}
               </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-                      {profile.firstName} {profile.lastName}
-                    </h1>
-                    <p className="text-lg text-[var(--text-muted)] mb-1">
-                      {profile.user?.role || role || "Employee"}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Employee ID: {profile.personNo}
-                    </p>
-                  </div>
+              <div>
+                <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+                  {profile!.firstName} {profile!.lastName}
+                </h1>
 
-                  <div className="flex-shrink-0 flex items-center gap-3">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
-                        profile.status === "Active"
-                          ? "bg-green-900/30 text-green-400 border border-green-700/50"
-                          : "bg-red-900/30 text-red-400 border border-red-700/50"
-                      }`}
-                    >
-                      <Activity className="w-4 h-4 mr-1.5" />
-                      {profile.status}
-                    </span>
+                <p className="text-sm text-[var(--text-muted)] mt-1">
+                  {profile!.user?.role || role}
+                </p>
 
-                    <button
-                      onClick={openEditor}
-                      className="ml-3 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                      Edit Profile
-                    </button>
-                  </div>
-                </div>
+                <p className="text-xs mt-1">
+                  Employee ID:{" "}
+                  <span className="font-semibold text-[var(--text-primary)]">
+                    {profile!.personNo}
+                  </span>
+                </p>
+              </div>
+            </div>
 
-                <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[var(--border-color)]">
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                    <Clock className="w-4 h-4" />
-                    <span>{getYearsOfService(profile.hireDate)} of service</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                    <Building className="w-4 h-4" />
-                    <span>{profile.department || "No department"}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                    <MapPin className="w-4 h-4" />
-                    <span>{profile.location || "Remote"}</span>
-                  </div>
-                </div>
+            <div className="flex items-center gap-4">
+              <span
+                className={`px-3 py-1 rounded-full text-sm ${
+                  profile!.status === "Active"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-rose-100 text-rose-700"
+                }`}
+              >
+                {profile!.status}
+              </span>
+
+              <button
+                onClick={openEditor}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex gap-2 items-center"
+              >
+                <Edit3 className="w-4 h-4" /> Edit
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* -------------------------------------------------------------
+            PROFILE GRID
+        ------------------------------------------------------------- */}
+        <div className="grid md:grid-cols-3 gap-8">
+
+          {/* LEFT COLUMN */}
+          <div className="space-y-8">
+
+            {/* CONTACT */}
+            <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
+              <Section icon={Mail} title="Contact Details" />
+              <div className="space-y-4">
+                <CardInfo icon={Mail} label="Work Email" value={profile!.workEmail} copyable />
+                <CardInfo icon={Phone} label="Phone" value={profile!.phone} copyable />
+                <CardInfo icon={MapPin} label="Address" value={profile!.address} />
+                <CardInfo icon={Users} label="Emergency Contact" value={profile!.emergencyContact} />
+              </div>
+            </div>
+
+            {/* PERSONAL */}
+            <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
+              <Section icon={User} title="Personal Information" />
+              <div className="space-y-4">
+                <CardInfo icon={Calendar} label="Birthdate" value={profile!.birthdate} />
+                <CardInfo icon={MapPin} label="Location" value={profile!.location} />
+                <CardInfo icon={MapPin} label="Gender" value={profile!.gender} />
+                <CardInfo icon={Briefcase} label="Education" value={profile!.educationQualification} />
+              </div>
+            </div>
+
+          </div>
+
+          {/* RIGHT COLUMN */}
+          <div className="md:col-span-2 space-y-8">
+
+            {/* EMPLOYMENT */}
+            <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
+              <Section icon={Briefcase} title="Employment Details" />
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <CardInfo icon={Building} label="Department" value={profile!.department} />
+                <CardInfo
+                  icon={Users}
+                  label="Manager"
+                  value={profile!.manager ? `${profile!.manager.firstName} ${profile!.manager.lastName}` : "Direct Report"}
+                />
+                <CardInfo icon={Activity} label="Status" value={profile!.status} />
+                <CardInfo icon={Calendar} label="Hire Date" value={profile!.hireDate} />
+              </div>
+            </div>
+
+            {/* BANK */}
+            <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
+              <Section icon={Landmark} title="Bank & Financial Details" />
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <CardInfo icon={Landmark} label="Bank Name" value={profile!.bankDetail?.bankName} />
+                <CardInfo icon={Activity} label="Account Number" value={profile!.bankDetail?.accountNumber} />
+                <CardInfo icon={FileDigit} label="IFSC" value={profile!.bankDetail?.ifscCode} />
+                <CardInfo icon={MapPin} label="Branch" value={profile!.bankDetail?.branch} />
+                <CardInfo icon={Wallet} label="PF Number" value={profile!.bankDetail?.pfNumber} />
+                <CardInfo icon={Users} label="UAN Number" value={profile!.bankDetail?.uan} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Profile content */}
-        {/* Profile content */}
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-  {/* ───── Personal Info ───── */}
-  <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-sm transition-colors p-6">
-    <div className="flex items-center gap-3 mb-4">
-      <div className="p-2 bg-blue-500/10 rounded-lg">
-        <User className="w-6 h-6 text-blue-500" />
-      </div>
-      <h2 className="text-xl font-bold text-[var(--text-primary)]">
-        Personal Information
-      </h2>
-    </div>
-    <div className="space-y-4">
-      <InfoCard
-        icon={User}
-        label="Full Name"
-        value={`${profile.firstName} ${profile.lastName}`}
-      />
-      <InfoCard icon={Mail} label="Work Email" value={profile.workEmail} copyable />
-      <InfoCard
-        icon={Phone}
-        label="Phone Number"
-        value={profile.phone ? formatPhoneNumber(profile.phone) : "Not provided"}
-        copyable={!!profile.phone}
-      />
-      <InfoCard icon={MapPin} label="Work Location" value={profile.location || "Not specified"} />
-    </div>
-  </div>
+        {/* =====================================================================
+            EDIT MODAL
+        ===================================================================== */}
+        {editing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 
-  {/* ───── Employment Info ───── */}
-  <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-sm transition-colors p-6">
-    <div className="flex items-center gap-3 mb-4">
-      <div className="p-2 bg-green-500/10 rounded-lg">
-        <Briefcase className="w-6 h-6 text-green-500" />
-      </div>
-      <h2 className="text-xl font-bold text-[var(--text-primary)]">
-        Employment Details
-      </h2>
-    </div>
-    <div className="space-y-4">
-      <InfoCard icon={Briefcase} label="Job Title" value={profile.user?.role || role || "Employee"} />
-      <InfoCard icon={Building} label="Department" value={profile.department || "Not assigned"} />
-      <InfoCard icon={Calendar} label="Hire Date" value={formatDate(profile.hireDate)} />
-      <InfoCard
-        icon={Users}
-        label="Reporting Manager"
-        value={profile.manager ? `${profile.manager.firstName} ${profile.manager.lastName}` : "Direct Report"}
-      />
-      <InfoCard icon={Activity} label="Employment Status" value={profile.status} />
-    </div>
-  </div>
-</div>
+            {/* BACKDROP */}
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setEditing(false)}
+            />
 
-{/* ───── Bank Details (New Horizontal Section) ───── */}
-<div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-  <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-sm p-6 transition-colors col-span-3">
-    <div className="flex items-center gap-3 mb-4">
-      <div className="p-2 bg-purple-500/10 rounded-lg">
-        <Building className="w-6 h-6 text-purple-500" />
-      </div>
-      <h2 className="text-xl font-bold text-[var(--text-primary)]">
-        Bank & Financial Details
-      </h2>
-    </div>
+            {/* MODAL */}
+            <div className="relative max-w-3xl w-full rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-lg overflow-hidden">
 
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <InfoCard label="Bank Name" value={profile.bankDetail?.bankName || "Not provided"} icon={Landmark} />
-      <InfoCard label="Account Number" value={profile.bankDetail?.accountNumber || "Not provided"} icon={Activity} copyable />
-      <InfoCard label="IFSC Code" value={profile.bankDetail?.ifscCode || "Not provided"} icon={FileDigit} copyable />
-      <InfoCard label="Branch" value={profile.bankDetail?.branch || "Not provided"} icon={MapPin} />
-      <InfoCard label="PF Number" value={profile.bankDetail?.pfNumber || "Not provided"} icon={Wallet} copyable />
-      <InfoCard label="UAN Number" value={profile.bankDetail?.uan || "Not provided"} icon={Users} copyable />
-    </div>
-  </div>
-</div>
+              {/* HEADER */}
+              <div className="px-6 py-4 border-b border-[var(--border-color)] flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+                  Edit Profile
+                </h3>
 
-
-        {/* Contact actions */}
-        <div className="mt-8 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-6 transition-colors">
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {profile.workEmail && (
-              <a
-                href={`mailto:${profile.workEmail}`}
-                className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                Send Email
-              </a>
-            )}
-            {profile.phone && (
-              <a
-                href={`tel:${profile.phone}`}
-                className="inline-flex items-center justify-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-              >
-                <Phone className="w-4 h-4 mr-2" />
-                Call Phone
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Edit modal / drawer */}
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-[var(--text-primary)]">Edit Profile</h3>
-              <div className="flex items-center gap-2">
                 <button
-                  onClick={handleCancel}
-                  className="px-3 py-1 rounded-md bg-red-500 hover:bg-red-700"
+                  onClick={() => setEditing(false)}
+                  className="p-2 hover:bg-[var(--hover-bg)] rounded-full"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5 text-[var(--text-primary)]" />
                 </button>
               </div>
-            </div>
 
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">First Name</span>
-                <input
-                  name="firstName"
-                  value={editModel.firstName ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
+              {/* CONTENT */}
+              <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6">
 
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">Last Name</span>
-                <input
-                  name="lastName"
-                  value={editModel.lastName ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
+                {/* LOCKED FIELDS */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-3 text-[var(--text-primary)]">
+                    Personal Details (Locked)
+                  </h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <LockedField label="First Name" value={profile!.firstName} />
+                    <LockedField label="Last Name" value={profile!.lastName} />
+                    <LockedField label="Work Email" value={profile!.workEmail} />
+                    <LockedField label="Department" value={profile!.department} />
+                  </div>
+                </div>
 
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">Phone</span>
-                <input
-                  name="phone"
-                  value={editModel.phone ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
+                {/* EDITABLE PERSONAL INFO */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-3 text-[var(--text-primary)]">
+                    Personal Information
+                  </h4>
 
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">Work Email (read-only)</span>
-                <input
-                  name="workEmail"
-                  value={profile.workEmail}
-                  readOnly
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] opacity-70 cursor-not-allowed"
-                />
-              </label>
-            </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <InputField label="Phone" name="phone" value={editModel.phone} onChange={handleEditChange} />
+                    <InputField label="Gender" name="gender" value={editModel.gender} onChange={handleEditChange} />
+                  </div>
 
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">Bank Name</span>
-                <input
-                  name="bankName"
-                  value={editModel.bankName ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
+                  <div className="mt-4">
+                    <label className="text-sm font-medium text-[var(--text-primary)]">Address</label>
+                    <textarea
+                      name="address"
+                      rows={3}
+                      value={editModel.address}
+                      onChange={handleEditChange}
+                      className="
+                        w-full mt-1 p-2.5 rounded-lg border border-[var(--border-color)]
+                        bg-[var(--card-bg)] text-[var(--text-primary)]
+                        focus:ring-2 focus:ring-indigo-400 outline-none
+                      "
+                    />
+                  </div>
 
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">Account Number</span>
-                <input
-                  name="accountNumber"
-                  value={editModel.accountNumber ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
+                  <div className="grid md:grid-cols-2 gap-4 mt-4">
+                    <InputField label="Emergency Contact" name="emergencyContact" value={editModel.emergencyContact} onChange={handleEditChange} />
+                    <InputField label="Education Qualification" name="educationQualification" value={editModel.educationQualification} onChange={handleEditChange} />
 
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">IFSC</span>
-                <input
-                  name="ifscCode"
-                  value={editModel.ifscCode ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
+                    <div>
+                      <label className="text-sm font-medium text-[var(--text-primary)]">
+                        Birthdate
+                      </label>
+                      <input
+                        type="date"
+                        name="birthdate"
+                        value={editModel.birthdate?.split("T")[0] ?? ""}
+                        onChange={handleEditChange}
+                        className="
+                          w-full p-2.5 rounded-lg border border-[var(--border-color)]
+                          bg-[var(--card-bg)] text-[var(--text-primary)]
+                        "
+                      />
+                    </div>
 
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">Branch</span>
-                <input
-                  name="branchName"
-                  value={editModel.branchName ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
-            </div>
+                    <InputField label="Location" name="location" value={editModel.location} onChange={handleEditChange} />
+                  </div>
+                </div>
 
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">PF Number</span>
-                <input
-                  name="pfNumber"
-                  value={editModel.pfNumber ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
+                {/* BANK DETAILS */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-3 text-[var(--text-primary)]">
+                    Bank & Financial Details
+                  </h4>
 
-              <label className="flex flex-col">
-                <span className="text-sm text-[var(--text-muted)] mb-1">UAN</span>
-                <input
-                  name="uanNumber"
-                  value={editModel.uanNumber ?? ""}
-                  onChange={handleEditChange}
-                  className="px-3 py-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]"
-                />
-              </label>
-            </div>
+                  <div className="grid md:grid-cols-2 gap-4">
 
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-700 text-white"
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
-                type="button"
-                disabled={saving}
-              >
-                {saving ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save changes
-              </button>
+                    <InputField label="Bank Name" name="bankName" value={editModel.bankName} onChange={handleEditChange} />
+
+                    {/* ACCOUNT NUMBER */}
+                    <SensitiveField
+                      label="Account Number"
+                      name="accountNumber"
+                      value={editModel.accountNumber}
+                      onChange={handleEditChange}
+                      revealed={showSensitive.accountNumber}
+                      onToggle={() => toggleSensitive("accountNumber")}
+                    />
+
+                    <InputField label="IFSC Code" name="ifscCode" value={editModel.ifscCode} onChange={handleEditChange} />
+                    <InputField label="Branch" name="branchName" value={editModel.branchName} onChange={handleEditChange} />
+
+                    <SensitiveField
+                      label="PF Number"
+                      name="pfNumber"
+                      value={editModel.pfNumber}
+                      onChange={handleEditChange}
+                      revealed={showSensitive.pfNumber}
+                      onToggle={() => toggleSensitive("pfNumber")}
+                    />
+
+                    <SensitiveField
+                      label="UAN Number"
+                      name="uanNumber"
+                      value={editModel.uanNumber}
+                      onChange={handleEditChange}
+                      revealed={showSensitive.uanNumber}
+                      onToggle={() => toggleSensitive("uanNumber")}
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+              {/* FOOTER */}
+              <div className="px-6 py-4 border-t border-[var(--border-color)] flex justify-end gap-3 bg-[var(--card-bg)]">
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-4 py-2 rounded-lg bg-[var(--hover-bg)] text-[var(--text-primary)]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-60"
+                >
+                  {saving ? <RefreshCcw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
+                  Save Changes
+                </button>
+              </div>
+
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   SECTION TITLE
+   ========================================================================= */
+function Section({ icon: Icon, title }: any) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <div className="p-2 rounded-md bg-gradient-to-tr from-indigo-500 to-cyan-400 text-white">
+        <Icon className="w-4 h-4" />
+      </div>
+      <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+        {title}
+      </h3>
+    </div>
+  );
+}
+
+/* Locked readonly fields */
+function LockedField({ label, value }: any) {
+  return (
+    <div className="space-y-1">
+      <label className="text-xs text-[var(--text-muted)]">{label}</label>
+      <input
+        value={value ?? ""}
+        readOnly
+        className="
+          w-full p-2.5 rounded-lg border border-[var(--border-color)]
+          bg-[var(--hover-bg)] text-[var(--text-muted)] cursor-not-allowed
+        "
+      />
+    </div>
+  );
+}
+
+/* Password-like sensitive fields */
+function SensitiveField({ label, name, value, onChange, revealed, onToggle }: any) {
+  return (
+    <div>
+      <label className="text-sm font-medium text-[var(--text-primary)]">
+        {label}
+      </label>
+      <div className="flex items-center gap-2 mt-1">
+        <input
+          name={name}
+          value={value ?? ""}
+          onChange={onChange}
+          type={revealed ? "text" : "password"}
+          className="
+            w-full p-2.5 rounded-lg border border-[var(--border-color)]
+            bg-[var(--card-bg)] text-[var(--text-primary)]
+          "
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          className="p-2 rounded-lg border border-[var(--border-color)] bg-[var(--hover-bg)]"
+        >
+          {revealed ? (
+            <EyeOff className="w-4 h-4 text-[var(--text-primary)]" />
+          ) : (
+            <Eye className="w-4 h-4 text-[var(--text-primary)]" />
+          )}
+        </button>
+      </div>
     </div>
   );
 }

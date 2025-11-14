@@ -700,7 +700,7 @@ const StatsCard = ({ icon: Icon, label, value, change, trend }: any) => (
 -------------------------------------------- */
 export default function EmployeesAdminPage() {
   const { theme } = useTheme();
-  const { token } = useAuth();
+  const { token, role } = useAuth();
 
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -744,6 +744,7 @@ export default function EmployeesAdminPage() {
         const res = await api.get("/employees", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log("Fetched employees:", res.data);
         setEmployees(res.data);
       } catch (err) {
         console.error("Failed to fetch employees:", err);
@@ -786,6 +787,7 @@ export default function EmployeesAdminPage() {
         workEmail: form.workEmail.trim(),
         personalEmail: form.personalEmail || undefined,
         phone: form.phone || undefined,
+        role: form.role,
         emergencyContact: form.emergencyContact || undefined,
         gender: form.gender || undefined,
         address: form.address || undefined,
@@ -880,6 +882,28 @@ export default function EmployeesAdminPage() {
       alert(err?.response?.data?.message || 'Failed to update status');
     }
   };
+
+  /* ----------------- delete Employee --------------------------*/
+  const deleteEmployee = async (employeeId: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this employee? This action cannot be undone.")) {
+      return;
+    }
+  
+    try {
+      await api.delete(`/employees/${employeeId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      // Update UI
+      setEmployees((prev) => prev.filter((e) => e.id !== employeeId));
+  
+      alert("Employee deleted successfully.");
+    } catch (err: any) {
+      console.error("Failed to delete employee:", err);
+      alert(err?.response?.data?.message || "Failed to delete employee.");
+    }
+  };
+  
 
   const getNewHireCount = (employees: any[]): number => {
     if (!employees || employees.length === 0) return 0;
@@ -1093,6 +1117,21 @@ export default function EmployeesAdminPage() {
                   <option value="Other">Other</option>
                 </Select>
               </FormField>
+
+
+              <FormField label="Role" required error={formErrors.role}>
+  <Select
+    value={form.role}
+    onChange={(e: any) =>
+      setForm({ ...form, role: e.target.value })
+    }
+  >
+    <option value="">Select Role</option>
+    <option value="EMPLOYEE">Employee</option>
+    {role === "ADMIN" && <option value="HR">HR</option>}
+    {role === "ADMIN" && <option value="ADMIN">Admin</option>}
+  </Select>
+</FormField>
 
               <FormField label="Birthday">
                 <Input
@@ -1321,6 +1360,14 @@ export default function EmployeesAdminPage() {
         Mark Inactive
       </button>
     )}
+    <button
+  onClick={() => deleteEmployee(employee.id)}
+  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm shadow-sm transition-all"
+  title="Delete employee permanently"
+>
+  Delete
+</button>
+
   </div>
 
   {employee.documents?.length ? (

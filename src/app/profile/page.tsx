@@ -8,6 +8,8 @@ export default function SettingsPage() {
   const { role } = useAuth();
 
   if (role === "ADMIN") return <ProfilePage />;
+  if (role === "HR") return <ProfilePage />;
+
   if (role === "EMPLOYEE") return <EmployeesEmployeePage />;
 
   return (

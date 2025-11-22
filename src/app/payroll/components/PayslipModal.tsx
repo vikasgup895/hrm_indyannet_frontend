@@ -25,6 +25,7 @@ export default function PayslipModal({
   const [activeTab, setActiveTab] = useState<"overview" | "detailed">(
     "overview"
   );
+  console.log(data)
   const slipRef = useRef<HTMLDivElement>(null);
 
   const safe = (n: any) => (isNaN(Number(n)) ? 0 : Number(n));
@@ -142,7 +143,7 @@ export default function PayslipModal({
                   icon={User}
                   label="Employee"
                   value={`${data.employee.firstName} ${data.employee.lastName}`}
-                  sub={`ID: ${data.employeeId}`}
+                  sub={`ID: ${data.employee?.personNo}`}
                 />
                 <Box
                   icon={Building}

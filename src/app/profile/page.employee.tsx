@@ -28,6 +28,9 @@ import {
   Landmark,
   Eye,
   EyeOff,
+  IdCard,
+  BanknoteIcon,
+  Contact,
 } from "lucide-react";
 
 /* =========================================================================
@@ -56,6 +59,7 @@ type EmployeeProfile = {
   educationQualification?: string;
   birthdate?: string;
   location?: string;
+  designation?: string;
 
   department?: string;
   status: string;
@@ -105,9 +109,9 @@ const InputField = React.memo((props: any) => {
 });
 
 /* =========================================================================
-   CARD INFO COMPONENT
+   CARD INFO COMPONENT - IMPROVED
    ========================================================================= */
-function CardInfo({ icon: Icon, label, value, copyable = false }: any) {
+function CardInfo({ icon: Icon, label, value, copyable = false, size = "default" }: any) {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = async (text: string) => {
@@ -115,36 +119,42 @@ function CardInfo({ icon: Icon, label, value, copyable = false }: any) {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
-    } catch {}
+    } catch { }
   };
+
+  const textSize = size === "large" ? "text-base" : "text-sm";
 
   return (
     <div
-      className="
-        flex items-center gap-4 p-3 rounded-lg 
+      className={`
+        flex items-start gap-4 p-4 rounded-xl 
         bg-[var(--card-bg)] border border-[var(--border-color)]
-      "
+        hover:shadow-sm transition-all duration-200
+        ${size === "large" ? "min-h-[80px]" : "min-h-[72px]"}
+      `}
     >
-      <div className="p-2 rounded-md bg-gradient-to-tr from-indigo-500 to-cyan-400 ">
-        <Icon className="w-5 h-5 text-white dark:text-white" />
+      <div className="p-2 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 shadow-sm flex-shrink-0">
+        <Icon className="w-4 h-4 text-white" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-[var(--text-muted)]">{label}</p>
-        <p className="text-sm font-semibold text-[var(--text-primary)] break-words">
-          {value ?? "—"}
+        <p className="text-xs font-medium text-[var(--text-muted)] mb-1.5 uppercase tracking-wide">
+          {label}
+        </p>
+        <p className={`font-semibold text-[var(--text-primary)] break-words leading-relaxed ${textSize}`}>
+          {value ?? <span className="text-[var(--text-muted)] italic">Not provided</span>}
         </p>
       </div>
 
       {copyable && value && (
         <button
           onClick={() => copyToClipboard(value)}
-          className="p-1.5 rounded-md hover:bg-[var(--hover-bg)]"
+          className="p-2 rounded-lg hover:bg-[var(--hover-bg)] transition-colors flex-shrink-0"
         >
           {copied ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
           ) : (
-            <Copy className="w-4 h-4 text-[var(--text-primary)]" />
+            <Copy className="w-4 h-4 text-[var(--text-muted)] hover:text-[var(--text-primary)]" />
           )}
         </button>
       )}
@@ -288,134 +298,146 @@ export default function EmployeesEmployeePage() {
   if (error) return <div className="p-20 text-red-600">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] py-10 px-4">
-      <div className="max-w-6xl mx-auto space-y-10">
+    <div className="min-h-screen bg-[var(--background)] py-8 px-4">
+      <div className="max-w-7xl mx-auto space-y-8">
 
         {/* -------------------------------------------------------------
-            HEADER CARD
+            IMPROVED HEADER CARD
         ------------------------------------------------------------- */}
-        <div className="rounded-2xl border border-[var(--border-color)] p-6 bg-[var(--card-bg)] shadow-sm">
-          <div className="flex justify-between flex-col md:flex-row gap-6">
-
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-3xl font-bold">
+        <div className="rounded-2xl border border-[var(--border-color)] p-8 bg-[var(--card-bg)] shadow-sm">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
                 {profile!.firstName[0]}
                 {profile!.lastName[0]}
               </div>
 
-              <div>
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-                  {profile!.firstName} {profile!.lastName}
-                </h1>
+              <div className="space-y-3">
+                <div>
+                  <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+                    {profile!.firstName} {profile!.lastName}
+                  </h1>
+                  <p className="text-lg text-[var(--text-primary)] font-medium mt-1">
+                    {profile!.designation ?? profile!.user?.role}
+                  </p>
+                </div>
 
-                <p className="text-sm text-[var(--text-muted)] mt-1">
-                  {profile!.user?.role || role}
-                </p>
-
-                <p className="text-xs mt-1">
-                  Employee ID:{" "}
-                  <span className="font-semibold text-[var(--text-primary)]">
-                    {profile!.personNo}
-                  </span>
-                </p>
+                <div className="flex items-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <IdCard className="w-4 h-4 text-[var(--text-muted)]" />
+                    <span className="text-[var(--text-primary)]">
+                      <strong>ID:</strong> {profile!.personNo}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Building className="w-4 h-4 text-[var(--text-muted)]" />
+                    <span className="text-[var(--text-primary)]">
+                      {profile!.department}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end gap-4">
               <span
-                className={`px-3 py-1 rounded-full text-sm ${
-                  profile!.status === "Active"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-rose-100 text-rose-700"
-                }`}
+                className={`px-4 py-2 rounded-full text-sm font-medium ${profile!.status === "Active"
+                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                    : "bg-rose-100 text-rose-800 border border-rose-200"
+                  }`}
               >
                 {profile!.status}
               </span>
 
               <button
                 onClick={openEditor}
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex gap-2 items-center"
+                className="px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 flex gap-2 items-center font-medium transition-colors shadow-sm"
               >
-                <Edit3 className="w-4 h-4" /> Edit
+                <Edit3 className="w-4 h-4" /> Edit Profile
               </button>
             </div>
-
           </div>
         </div>
 
         {/* -------------------------------------------------------------
-            PROFILE GRID
+            IMPROVED PROFILE GRID
         ------------------------------------------------------------- */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-2 gap-8">
 
-          {/* LEFT COLUMN */}
+          {/* LEFT COLUMN - PERSONAL & CONTACT INFO */}
           <div className="space-y-8">
 
-            {/* CONTACT */}
-            <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
-              <Section icon={Mail} title="Contact Details" />
-              <div className="space-y-4">
-                <CardInfo icon={Mail} label="Work Email" value={profile!.workEmail} copyable />
-                <CardInfo icon={Phone} label="Phone" value={profile!.phone} copyable />
-                <CardInfo icon={MapPin} label="Address" value={profile!.address} />
-                <CardInfo icon={Users} label="Emergency Contact" value={profile!.emergencyContact} />
+            {/* EMPLOYMENT OVERVIEW */}
+            <SectionCard icon={Briefcase} title="Employment Overview">
+              <div className="grid gap-4">
+                <CardInfo icon={Building} label="Department" value={profile!.department} size="large" />
+                <CardInfo icon={Briefcase} label="Designation" value={profile!.designation} size="large" />
+                <CardInfo icon={Users} label="Manager"
+                  value={profile!.manager ? `${profile!.manager.firstName} ${profile!.manager.lastName}` : "Direct Report"}
+                  size="large"
+                />
+                <CardInfo
+                  icon={Calendar}
+                  label="Hire Date"
+                  value={
+                    profile?.hireDate
+                      ? new Date(profile.hireDate).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                      : "—"
+                  }
+                  size="large"
+                />
               </div>
-            </div>
+            </SectionCard>
 
-            {/* PERSONAL */}
-            <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
-              <Section icon={User} title="Personal Information" />
-              <div className="space-y-4">
-                <CardInfo icon={Calendar} label="Birthdate" value={profile!.birthdate} />
-                <CardInfo icon={MapPin} label="Location" value={profile!.location} />
-                <CardInfo icon={MapPin} label="Gender" value={profile!.gender} />
-                <CardInfo icon={Briefcase} label="Education" value={profile!.educationQualification} />
+            {/* CONTACT INFORMATION */}
+            <SectionCard icon={Contact} title="Contact Information">
+              <div className="grid gap-4">
+                <CardInfo icon={Mail} label="Work Email" value={profile!.workEmail} copyable size="large" />
+                <CardInfo icon={Phone} label="Phone" value={profile!.phone} copyable size="large" />
+                <CardInfo icon={MapPin} label="Address" value={profile!.address} size="large" />
+                <CardInfo icon={Users} label="Emergency Contact" value={profile!.emergencyContact} size="large" />
               </div>
-            </div>
+            </SectionCard>
 
           </div>
 
-          {/* RIGHT COLUMN */}
-          <div className="md:col-span-2 space-y-8">
+          {/* RIGHT COLUMN - PERSONAL & FINANCIAL INFO */}
+          <div className="space-y-8">
 
-            {/* EMPLOYMENT */}
-            <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
-              <Section icon={Briefcase} title="Employment Details" />
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <CardInfo icon={Building} label="Department" value={profile!.department} />
-                <CardInfo
-                  icon={Users}
-                  label="Manager"
-                  value={profile!.manager ? `${profile!.manager.firstName} ${profile!.manager.lastName}` : "Direct Report"}
-                />
-                <CardInfo icon={Activity} label="Status" value={profile!.status} />
-                <CardInfo icon={Calendar} label="Hire Date" value={profile!.hireDate} />
+            {/* PERSONAL DETAILS */}
+            <SectionCard icon={User} title="Personal Details">
+              <div className="grid gap-4">
+                <CardInfo icon={Calendar} label="Birthdate" value={profile!.birthdate} size="large" />
+                <CardInfo icon={MapPin} label="Location" value={profile!.location} size="large" />
+                <CardInfo icon={User} label="Gender" value={profile!.gender} size="large" />
+                <CardInfo icon={Briefcase} label="Education Qualification" value={profile!.educationQualification} size="large" />
               </div>
-            </div>
+            </SectionCard>
 
-            {/* BANK */}
-            <div className="p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
-              <Section icon={Landmark} title="Bank & Financial Details" />
-
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <CardInfo icon={Landmark} label="Bank Name" value={profile!.bankDetail?.bankName} />
-                <CardInfo icon={Activity} label="Account Number" value={profile!.bankDetail?.accountNumber} />
-                <CardInfo icon={FileDigit} label="IFSC" value={profile!.bankDetail?.ifscCode} />
-                <CardInfo icon={MapPin} label="Branch" value={profile!.bankDetail?.branch} />
-                <CardInfo icon={Wallet} label="PF Number" value={profile!.bankDetail?.pfNumber} />
-                <CardInfo icon={Users} label="UAN Number" value={profile!.bankDetail?.uan} />
+            {/* BANK & FINANCIAL DETAILS */}
+            <SectionCard icon={BanknoteIcon} title="Bank & Financial Information">
+              <div className="grid gap-4">
+                <CardInfo icon={Landmark} label="Bank Name" value={profile!.bankDetail?.bankName} size="large" />
+                <CardInfo icon={FileDigit} label="Account Number" value={profile!.bankDetail?.accountNumber} size="large" />
+                <CardInfo icon={FileDigit} label="IFSC Code" value={profile!.bankDetail?.ifscCode} size="large" />
+                <CardInfo icon={MapPin} label="Branch" value={profile!.bankDetail?.branch} size="large" />
+                <CardInfo icon={Wallet} label="PF Number" value={profile!.bankDetail?.pfNumber} size="large" />
+                <CardInfo icon={Users} label="UAN Number" value={profile!.bankDetail?.uan} size="large" />
               </div>
-            </div>
+            </SectionCard>
+
           </div>
         </div>
 
         {/* =====================================================================
-            EDIT MODAL
+            EDIT MODAL (UNCHANGED)
         ===================================================================== */}
         {editing && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-
             {/* BACKDROP */}
             <div
               className="absolute inset-0 bg-black/40"
@@ -424,13 +446,11 @@ export default function EmployeesEmployeePage() {
 
             {/* MODAL */}
             <div className="relative max-w-3xl w-full rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-lg overflow-hidden">
-
               {/* HEADER */}
               <div className="px-6 py-4 border-b border-[var(--border-color)] flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-[var(--text-primary)]">
                   Edit Profile
                 </h3>
-
                 <button
                   onClick={() => setEditing(false)}
                   className="p-2 hover:bg-[var(--hover-bg)] rounded-full"
@@ -441,7 +461,6 @@ export default function EmployeesEmployeePage() {
 
               {/* CONTENT */}
               <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6">
-
                 {/* LOCKED FIELDS */}
                 <div>
                   <h4 className="font-semibold text-sm mb-3 text-[var(--text-primary)]">
@@ -452,6 +471,7 @@ export default function EmployeesEmployeePage() {
                     <LockedField label="Last Name" value={profile!.lastName} />
                     <LockedField label="Work Email" value={profile!.workEmail} />
                     <LockedField label="Department" value={profile!.department} />
+                    <LockedField label="Designation" value={profile!.designation} />
                   </div>
                 </div>
 
@@ -460,12 +480,10 @@ export default function EmployeesEmployeePage() {
                   <h4 className="font-semibold text-sm mb-3 text-[var(--text-primary)]">
                     Personal Information
                   </h4>
-
                   <div className="grid md:grid-cols-2 gap-4">
                     <InputField label="Phone" name="phone" value={editModel.phone} onChange={handleEditChange} />
                     <InputField label="Gender" name="gender" value={editModel.gender} onChange={handleEditChange} />
                   </div>
-
                   <div className="mt-4">
                     <label className="text-sm font-medium text-[var(--text-primary)]">Address</label>
                     <textarea
@@ -480,11 +498,9 @@ export default function EmployeesEmployeePage() {
                       "
                     />
                   </div>
-
                   <div className="grid md:grid-cols-2 gap-4 mt-4">
                     <InputField label="Emergency Contact" name="emergencyContact" value={editModel.emergencyContact} onChange={handleEditChange} />
                     <InputField label="Education Qualification" name="educationQualification" value={editModel.educationQualification} onChange={handleEditChange} />
-
                     <div>
                       <label className="text-sm font-medium text-[var(--text-primary)]">
                         Birthdate
@@ -500,7 +516,6 @@ export default function EmployeesEmployeePage() {
                         "
                       />
                     </div>
-
                     <InputField label="Location" name="location" value={editModel.location} onChange={handleEditChange} />
                   </div>
                 </div>
@@ -510,12 +525,8 @@ export default function EmployeesEmployeePage() {
                   <h4 className="font-semibold text-sm mb-3 text-[var(--text-primary)]">
                     Bank & Financial Details
                   </h4>
-
                   <div className="grid md:grid-cols-2 gap-4">
-
                     <InputField label="Bank Name" name="bankName" value={editModel.bankName} onChange={handleEditChange} />
-
-                    {/* ACCOUNT NUMBER */}
                     <SensitiveField
                       label="Account Number"
                       name="accountNumber"
@@ -524,10 +535,8 @@ export default function EmployeesEmployeePage() {
                       revealed={showSensitive.accountNumber}
                       onToggle={() => toggleSensitive("accountNumber")}
                     />
-
                     <InputField label="IFSC Code" name="ifscCode" value={editModel.ifscCode} onChange={handleEditChange} />
                     <InputField label="Branch" name="branchName" value={editModel.branchName} onChange={handleEditChange} />
-
                     <SensitiveField
                       label="PF Number"
                       name="pfNumber"
@@ -536,7 +545,6 @@ export default function EmployeesEmployeePage() {
                       revealed={showSensitive.pfNumber}
                       onToggle={() => toggleSensitive("pfNumber")}
                     />
-
                     <SensitiveField
                       label="UAN Number"
                       name="uanNumber"
@@ -547,7 +555,6 @@ export default function EmployeesEmployeePage() {
                     />
                   </div>
                 </div>
-
               </div>
 
               {/* FOOTER */}
@@ -558,7 +565,6 @@ export default function EmployeesEmployeePage() {
                 >
                   Cancel
                 </button>
-
                 <button
                   onClick={handleSave}
                   disabled={saving}
@@ -568,7 +574,6 @@ export default function EmployeesEmployeePage() {
                   Save Changes
                 </button>
               </div>
-
             </div>
           </div>
         )}
@@ -579,17 +584,20 @@ export default function EmployeesEmployeePage() {
 }
 
 /* =========================================================================
-   SECTION TITLE
+   IMPROVED SECTION CARD COMPONENT
    ========================================================================= */
-function Section({ icon: Icon, title }: any) {
+function SectionCard({ icon: Icon, title, children }: any) {
   return (
-    <div className="flex items-center gap-3 mb-4">
-      <div className="p-2 rounded-md bg-gradient-to-tr from-indigo-500 to-cyan-400 text-white">
-        <Icon className="w-4 h-4" />
+    <div className="p-6 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2.5 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 text-white shadow-sm">
+          <Icon className="w-5 h-5" />
+        </div>
+        <h3 className="text-xl font-semibold text-[var(--text-primary)]">
+          {title}
+        </h3>
       </div>
-      <h3 className="text-lg font-semibold text-[var(--text-primary)]">
-        {title}
-      </h3>
+      {children}
     </div>
   );
 }

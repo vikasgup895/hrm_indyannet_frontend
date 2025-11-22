@@ -600,6 +600,7 @@ type Employee = {
   address?: string;
   educationQualification?: string;
   birthdate?: string;
+  designation?: string;
   department?: string;
   location?: string;
   status: string;
@@ -724,6 +725,7 @@ export default function EmployeesAdminPage() {
     gender: "",
     address: "",
     educationQualification: "",
+    designation: "",
     birthdate: "",
     role: "",
     department: "",
@@ -797,6 +799,8 @@ export default function EmployeesAdminPage() {
         location: form.location || undefined,
         hireDate: form.hireDate || new Date().toISOString(),
         status: form.status || "Active",
+        designation: form.designation || undefined,
+
       };
   
       const res = await api.post("/employees", employeeData, {
@@ -840,6 +844,8 @@ export default function EmployeesAdminPage() {
         hireDate: "",
         status: "Active",
         salary: "",
+        designation: "",
+
       });
       setSelectedFile(null);
       setFormErrors({});
@@ -1176,6 +1182,16 @@ export default function EmployeesAdminPage() {
                   }
                 />
               </FormField>
+              <FormField label="Designation" required>
+  <Input
+    type="text"
+    value={form.designation}
+    onChange={(e: any) =>
+      setForm({ ...form, designation: e.target.value })
+    }
+  />
+</FormField>
+
 
               <FormField label="Location">
                 <Input
@@ -1240,6 +1256,7 @@ export default function EmployeesAdminPage() {
                 <tr className="border-b border-[var(--border-color)] bg-[var(--hover-bg)]">
                   <th className="text-left px-6 py-4">Employee</th>
                   <th className="text-left px-6 py-4">Contact</th>
+                  <th className="text-left px-6 py-4">Desgination</th>
                   <th className="text-left px-6 py-4">Department</th>
                   <th className="text-left px-6 py-4">Status</th>
                   <th></th>
@@ -1273,6 +1290,9 @@ export default function EmployeesAdminPage() {
                         <span className="text-[var(--text-muted)]">
                           {employee.phone || "—"}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {employee.designation || "-"}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         {employee.department || "—"}
@@ -1406,523 +1426,3 @@ export default function EmployeesAdminPage() {
   );
 }
 
-// /* eslint-disable @typescript-eslint/no-explicit-any */
-// "use client";
-
-// import { useState, useEffect } from "react";
-// import {
-//   Users,
-//   X,
-//   Search,
-//   UserPlus,
-//   ChevronDown,
-//   ChevronUp,
-//   Building2,
-//   Briefcase,
-//   GraduationCap,
-//   Mail,
-//   Phone,
-//   MapPin,
-//   Calendar,
-//   User,
-//   Upload,
-//   FileText,
-// } from "lucide-react";
-// import { api } from "@/lib/api";
-// import { useAuth } from "@/store/auth";
-// import { useTheme } from "@/context/ThemeProvider";
-
-// /* -------------------------------------------
-//    Employee Type (extended with new fields)
-// -------------------------------------------- */
-// type Employee = {
-//   id: string;
-//   personNo: string;
-//   firstName: string;
-//   lastName: string;
-//   workEmail: string;
-//   personalEmail?: string;
-//   phone?: string;
-//   emergencyContact?: string;
-//   gender?: string;
-//   address?: string;
-//   educationQualification?: string;
-//   birthdate?: string;
-//   department?: string;
-//   location?: string;
-//   status: string;
-//   hireDate: string;
-//   documents?: {
-//     id: string;
-//     title: string;
-//     storageUrl: string;
-//     uploadedBy?: string;
-//   }[];
-// };
-
-// /* -----------------------------
-//    Reusable Components
-// ------------------------------ */
-// const FormField = ({
-//   label,
-//   required = false,
-//   children,
-//   error,
-// }: {
-//   label: string;
-//   required?: boolean;
-//   children: React.ReactNode;
-//   error?: string;
-// }) => (
-//   <div className="space-y-2">
-//     <label className="flex items-center text-sm font-semibold text-[var(--text-primary)]">
-//       {label}
-//       {required && <span className="text-red-500 ml-1">*</span>}
-//     </label>
-//     {children}
-//     {error && <p className="text-xs text-red-500">{error}</p>}
-//   </div>
-// );
-
-// const Input = ({ className = "", error = false, ...props }: any) => (
-//   <input
-//     className={`w-full px-4 py-3 rounded-xl text-[var(--text-primary)] bg-[var(--input-bg)] border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500
-//       ${error ? "border-red-500" : "border-[var(--border-color)] hover:border-blue-400"} ${className}`}
-//     {...props}
-//   />
-// );
-
-// const Select = ({ children, className = "", error = false, ...props }: any) => (
-//   <select
-//     className={`w-full px-4 py-3 rounded-xl text-[var(--text-primary)] bg-[var(--input-bg)] border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500
-//       ${error ? "border-red-500" : "border-[var(--border-color)] hover:border-blue-400"} ${className}`}
-//     {...props}
-//   >
-//     {children}
-//   </select>
-// );
-
-// /* -------------------------------------------
-//    Main Component
-// -------------------------------------------- */
-// export default function EmployeesAdminPage() {
-//   const { theme } = useTheme();
-//   const { token } = useAuth();
-
-//   const [search, setSearch] = useState("");
-//   const [showForm, setShowForm] = useState(false);
-//   const [employees, setEmployees] = useState<Employee[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [submitting, setSubmitting] = useState(false);
-//   const [openRow, setOpenRow] = useState<string | null>(null);
-//   const [activeTab, setActiveTab] = useState("all");
-//   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-//   /* -------------------------------------------
-//      Form State
-//   -------------------------------------------- */
-//   const [form, setForm] = useState({
-//     firstName: "",
-//     lastName: "",
-//     workEmail: "",
-//     personalEmail: "",
-//     phone: "",
-//     emergencyContact: "",
-//     gender: "",
-//     address: "",
-//     educationQualification: "",
-//     birthdate: "",
-//     department: "",
-//     location: "",
-//     hireDate: "",
-//     status: "Active",
-//     salary: "",
-//   });
-
-//   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
-//   /* -------------------------------------------
-//      Fetch Employees
-//   -------------------------------------------- */
-//   useEffect(() => {
-//     const fetchEmployees = async () => {
-//       try {
-//         const res = await api.get("/employees", {
-//           headers: { Authorization: `Bearer ${token}` },
-//         });
-//         setEmployees(res.data);
-//       } catch (err) {
-//         console.error("Failed to fetch employees:", err);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     if (token) fetchEmployees();
-//   }, [token]);
-
-//   /* -------------------------------------------
-//      Validation
-//   -------------------------------------------- */
-//   const validateForm = () => {
-//     const errors: Record<string, string> = {};
-//     if (!form.firstName.trim()) errors.firstName = "First name is required";
-//     if (!form.lastName.trim()) errors.lastName = "Last name is required";
-//     if (!form.workEmail.trim()) errors.workEmail = "Work email is required";
-//     if (form.workEmail && !/\S+@\S+\.\S+/.test(form.workEmail))
-//       errors.workEmail = "Invalid email address";
-//     if (!form.department) errors.department = "Department is required";
-//     setFormErrors(errors);
-//     return Object.keys(errors).length === 0;
-//   };
-
-//   /* -------------------------------------------
-//      Create Employee
-//   -------------------------------------------- */
-//   const handleAddEmployee = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!validateForm()) return;
-//     setSubmitting(true);
-
-//     try {
-//       const employeeData = {
-//         firstName: form.firstName.trim(),
-//         lastName: form.lastName.trim(),
-//         workEmail: form.workEmail.trim(),
-//         personalEmail: form.personalEmail || undefined,
-//         phone: form.phone || undefined,
-//         emergencyContact: form.emergencyContact || undefined,
-//         gender: form.gender || undefined,
-//         address: form.address || undefined,
-//         educationQualification: form.educationQualification || undefined,
-//         birthdate: form.birthdate || undefined,
-//         department: form.department,
-//         location: form.location,
-//         hireDate: form.hireDate || new Date().toISOString().split("T")[0],
-//         salary: form.salary || "0",
-//         currency: "INR",
-//         status: form.status || "Active",
-//       };
-
-//       const res = await api.post("/employees", employeeData, {
-//         headers: { Authorization: `Bearer ${token}` },
-//       });
-
-//       const newEmployee = res.data;
-
-//       // ✅ Upload document if selected
-//       if (selectedFile) {
-//         const formData = new FormData();
-//         formData.append("file", selectedFile);
-//         await api.post(`/employees/${newEmployee.id}/upload`, formData, {
-//           headers: {
-//             Authorization: `Bearer ${token}`,
-//             "Content-Type": "multipart/form-data",
-//           },
-//         });
-//       }
-
-//       setEmployees((prev) => [...prev, newEmployee]);
-//       setShowForm(false);
-//       setSelectedFile(null);
-//       setForm({
-//         firstName: "",
-//         lastName: "",
-//         workEmail: "",
-//         personalEmail: "",
-//         phone: "",
-//         emergencyContact: "",
-//         gender: "",
-//         address: "",
-//         educationQualification: "",
-//         birthdate: "",
-//         department: "",
-//         location: "",
-//         hireDate: "",
-//         status: "Active",
-//         salary: "",
-//       });
-//     } catch (err) {
-//       console.error("Failed to add employee:", err);
-//     } finally {
-//       setSubmitting(false);
-//     }
-//   };
-
-//   /* -------------------------------------------
-//      UI: Loading
-//   -------------------------------------------- */
-//   if (loading)
-//     return (
-//       <div className="min-h-screen flex items-center justify-center">
-//         <p>Loading employees...</p>
-//       </div>
-//     );
-
-//   /* -------------------------------------------
-//      Main UI
-//   -------------------------------------------- */
-//   return (
-//     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
-//       <div className="max-w-7xl mx-auto px-6 py-8">
-//         {/* Header */}
-//         <div className="flex items-start justify-between mb-6">
-//           <div className="flex items-center gap-3 mb-2">
-//             <div className="p-2 bg-blue-600 rounded-xl shadow-sm">
-//               <Users className="w-7 h-7 text-white" />
-//             </div>
-//             <div>
-//               <h1 className="text-3xl font-bold text-[var(--text-primary)]">
-//                 Employee Management
-//               </h1>
-//               <p className="text-[var(--text-muted)]">
-//                 Manage employees and upload documents
-//               </p>
-//             </div>
-//           </div>
-
-//           <button
-//             onClick={() => setShowForm(!showForm)}
-//             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all ${
-//               showForm
-//                 ? "bg-[var(--hover-bg)] text-[var(--text-primary)]"
-//                 : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-//             }`}
-//           >
-//             {showForm ? (
-//               <>
-//                 <X className="w-5 h-5" /> Cancel
-//               </>
-//             ) : (
-//               <>
-//                 <UserPlus className="w-5 h-5" /> Add Employee
-//               </>
-//             )}
-//           </button>
-//         </div>
-
-//         {/* Form */}
-//         {showForm && (
-//           <form
-//             onSubmit={handleAddEmployee}
-//             className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-lg p-8 space-y-6"
-//           >
-//             <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
-//               <UserPlus className="text-blue-500" /> New Employee
-//             </h2>
-
-//             <div className="grid gap-6 md:grid-cols-2">
-//               <FormField
-//                 label="First Name"
-//                 required
-//                 error={formErrors.firstName}
-//               >
-//                 <Input
-//                   type="text"
-//                   value={form.firstName}
-//                   onChange={(e: any) =>
-//                     setForm({ ...form, firstName: e.target.value })
-//                   }
-//                 />
-//               </FormField>
-//               <FormField label="Last Name" required error={formErrors.lastName}>
-//                 <Input
-//                   type="text"
-//                   value={form.lastName}
-//                   onChange={(e: any) =>
-//                     setForm({ ...form, lastName: e.target.value })
-//                   }
-//                 />
-//               </FormField>
-//               <FormField
-//                 label="Work Email"
-//                 required
-//                 error={formErrors.workEmail}
-//               >
-//                 <Input
-//                   type="email"
-//                   value={form.workEmail}
-//                   onChange={(e: any) =>
-//                     setForm({ ...form, workEmail: e.target.value })
-//                   }
-//                 />
-//               </FormField>
-//               <FormField label="Personal Email">
-//                 <Input
-//                   type="email"
-//                   value={form.personalEmail}
-//                   onChange={(e: any) =>
-//                     setForm({ ...form, personalEmail: e.target.value })
-//                   }
-//                 />
-//               </FormField>
-
-//               <FormField label="Gender">
-//                 <Select
-//                   value={form.gender}
-//                   onChange={(e: any) =>
-//                     setForm({ ...form, gender: e.target.value })
-//                   }
-//                 >
-//                   <option value="">Select</option>
-//                   <option value="Male">Male</option>
-//                   <option value="Female">Female</option>
-//                   <option value="Other">Other</option>
-//                 </Select>
-//               </FormField>
-
-//               <FormField label="Birthday">
-//                 <Input
-//                   type="date"
-//                   value={form.birthdate}
-//                   onChange={(e: any) =>
-//                     setForm({ ...form, birthdate: e.target.value })
-//                   }
-//                 />
-//               </FormField>
-
-//               <FormField
-//                 label="Department"
-//                 required
-//                 error={formErrors.department}
-//               >
-//                 <Input
-//                   type="text"
-//                   value={form.department}
-//                   onChange={(e: any) =>
-//                     setForm({ ...form, department: e.target.value })
-//                   }
-//                 />
-//               </FormField>
-
-//               <FormField label="Upload Document">
-//                 <div className="flex items-center gap-3">
-//                   <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-//                     <Upload className="w-4 h-4 inline mr-2" />
-//                     Choose File
-//                     <input
-//                       type="file"
-//                       accept=".pdf,.doc,.docx,.jpg,.png"
-//                       className="hidden"
-//                       onChange={(e) =>
-//                         setSelectedFile(e.target.files?.[0] || null)
-//                       }
-//                     />
-//                   </label>
-//                   {selectedFile && (
-//                     <span className="text-sm text-[var(--text-muted)]">
-//                       {selectedFile.name}
-//                     </span>
-//                   )}
-//                 </div>
-//               </FormField>
-//             </div>
-
-//             <div className="flex justify-end pt-6 border-t border-[var(--border-color)]">
-//               <button
-//                 type="submit"
-//                 disabled={submitting}
-//                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow transition disabled:opacity-40"
-//               >
-//                 {submitting ? "Adding..." : "Add Employee"}
-//               </button>
-//             </div>
-//           </form>
-//         )}
-
-//         {/* Employee Table */}
-//         <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm mt-8 overflow-hidden">
-//           <div className="px-6 py-4 border-b border-[var(--border-color)]">
-//             <h3 className="font-semibold text-[var(--text-primary)]">
-//               Employee Directory
-//             </h3>
-//           </div>
-//           <div className="overflow-x-auto">
-//             <table className="w-full">
-//               <thead className="bg-[var(--hover-bg)] border-b border-[var(--border-color)]">
-//                 <tr>
-//                   <th className="px-6 py-3 text-left">Employee</th>
-//                   <th className="px-6 py-3 text-left">Email</th>
-//                   <th className="px-6 py-3 text-left">Department</th>
-//                   <th className="px-6 py-3 text-left">Status</th>
-//                   <th className="px-6 py-3 text-right">Actions</th>
-//                 </tr>
-//               </thead>
-//               <tbody>
-//                 {employees.map((emp) => (
-//                   <>
-//                     <tr
-//                       key={emp.id}
-//                       className="border-b hover:bg-[var(--hover-bg)]"
-//                     >
-//                       <td className="px-6 py-3">
-//                         {emp.firstName} {emp.lastName}
-//                         <div className="text-sm text-[var(--text-muted)]">
-//                           {emp.personNo}
-//                         </div>
-//                       </td>
-//                       <td className="px-6 py-3">{emp.workEmail}</td>
-//                       <td className="px-6 py-3">{emp.department}</td>
-//                       <td className="px-6 py-3">
-//                         <span
-//                           className={`px-3 py-1 text-xs font-semibold rounded-full ${
-//                             emp.status === "Active"
-//                               ? "bg-green-500/10 text-green-600"
-//                               : "bg-red-500/10 text-red-600"
-//                           }`}
-//                         >
-//                           {emp.status}
-//                         </span>
-//                       </td>
-//                       <td className="px-6 py-3 text-right">
-//                         <button
-//                           onClick={() =>
-//                             setOpenRow(openRow === emp.id ? null : emp.id)
-//                           }
-//                           className="text-blue-600 hover:text-blue-800"
-//                         >
-//                           {openRow === emp.id ? <ChevronUp /> : <ChevronDown />}
-//                         </button>
-//                       </td>
-//                     </tr>
-//                     {openRow === emp.id && (
-//                       <tr>
-//                         <td
-//                           colSpan={5}
-//                           className="bg-[var(--hover-bg)] px-8 py-6"
-//                         >
-//                           <h4 className="font-semibold mb-3 text-[var(--text-primary)]">
-//                             Documents
-//                           </h4>
-//                           {emp.documents?.length ? (
-//                             <ul className="space-y-2">
-//                               {emp.documents.map((doc) => (
-//                                 <li key={doc.id}>
-//                                   <a
-//                                     href={`http://localhost:4000/${doc.storageUrl}`}
-//                                     target="_blank"
-//                                     rel="noopener noreferrer"
-//                                     className="text-blue-600 hover:underline flex items-center gap-2"
-//                                   >
-//                                     <FileText className="w-4 h-4" /> {doc.title}
-//                                   </a>
-//                                 </li>
-//                               ))}
-//                             </ul>
-//                           ) : (
-//                             <p className="text-sm text-[var(--text-muted)]">
-//                               No documents uploaded.
-//                             </p>
-//                           )}
-//                         </td>
-//                       </tr>
-//                     )}
-//                   </>
-//                 ))}
-//               </tbody>
-//             </table>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }

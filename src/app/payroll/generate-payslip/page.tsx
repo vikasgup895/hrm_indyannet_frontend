@@ -610,6 +610,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { downloadPayslipPDF } from "@/lib/payslip-pdf";
+import logo from "@/assets/logo.jpg";
 import { useAuth } from "@/store/auth";
 import {
   Download,
@@ -629,6 +630,7 @@ type BasicEmployee = {
   lastName: string;
   department?: string | null;
   workEmail?: string | null;
+
 };
 
 type BankDetail = {
@@ -647,6 +649,7 @@ type FullEmployee = {
   lastName: string;
   workEmail: string;
   department?: string | null;
+  designation?: string;
   location?: string | null;
   hireDate?: string | null;
   user?: { role?: string | null } | null;
@@ -999,6 +1002,7 @@ export default function PayslipPage() {
         firstName: emp.firstName,
         lastName: emp.lastName,
         department: emp.department ?? undefined,
+        designation:emp.designation ?? undefined,
         hireDate: emp.hireDate ?? undefined,
       },
       employeeId: emp.personNo,
@@ -1182,26 +1186,45 @@ export default function PayslipPage() {
             className="bg-white text-black rounded-lg border p-8 print:p-0"
           >
             {/* Header */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-md bg-red-600 text-white font-black flex items-center justify-center">
-                  IN
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-800">
-                    Indyanet HRM
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">
-                  Payslip for the Month
-                </div>
-                <div className="text-sm font-semibold text-gray-800">
-                  {monthLabel(month)}
-                </div>
-              </div>
-            </div>
+            {/* Header */}
+<div className="border-b border-gray-300 pb-5 mb-6">
+
+  <div className="flex items-center justify-between">
+
+    {/* Left: Logo */}
+    <div className="flex items-center">
+      <img
+        src={logo.src}
+        alt="Indyanet Logo"
+        className="h-14 w-auto object-contain"
+      />
+    </div>
+
+    {/* Center: Company Details */}
+    <div className="text-center flex-1 px-4">
+      <h1 className="text-2xl font-bold text-gray-900">Indyanet</h1>
+
+      <p className="text-sm text-gray-600 leading-tight mt-1">
+        Hustlehub Tech Park, 208, 27th Main Rd, ITI Layout, Sector 2,<br />
+        HSR Layout, Bengaluru, Karnataka 560102, India
+      </p>
+
+      <p className="text-sm text-gray-600 mt-1">
+        +91 81479 84043 &nbsp; | &nbsp; support@indyanet.com
+      </p>
+    </div>
+
+    {/* Right: Payslip Month */}
+    <div className="text-right w-40">
+      <div className="text-xs text-gray-500">Payslip for the Month</div>
+      <div className="text-sm font-semibold text-gray-800">
+        {monthLabel(month)}
+      </div>
+    </div>
+
+  </div>
+</div>
+
 
             {/* Employee Summary */}
             <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2 text-sm">
@@ -1209,7 +1232,7 @@ export default function PayslipPage() {
                 label="Employee Name"
                 value={`${emp?.firstName ?? ""} ${emp?.lastName ?? ""}`}
               />
-              <Field label="Designation" value={emp?.user?.role ?? "—"} />
+              <Field label="Designation" value={emp?.designation?? "—"} />
               <Field label="Employee ID" value={emp?.personNo ?? "—"} />
               <Field label="Department" value={emp?.department ?? "—"} />
               <Field
@@ -1306,12 +1329,13 @@ export default function PayslipPage() {
                     {emp ? `${emp.firstName} ${emp.lastName}` : "Employee"}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {emp?.user?.role ?? "—"}
+                    {emp?.designation || "—"}
                   </div>
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-xs text-gray-500">
+                  <p className="text-base font-bold text-red-500">HR Department</p>
                   Authorized Signatory
                 </div>
                 <div className="mt-6 border-t border-gray-300 w-40 ml-auto" />

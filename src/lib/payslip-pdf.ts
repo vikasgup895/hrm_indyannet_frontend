@@ -7,6 +7,7 @@
 
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import logo from "@/assets/logo.jpg";
 
 /* ---------- Type Definitions ---------- */
 export interface PayslipData {
@@ -182,17 +183,45 @@ function buildPayslipHTML(data: PayslipData) {
     <div style="${watermarkStyle}">INDYANET HRM</div>
 
     <!-- Header -->
-    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div style="width:36px; height:36px; border-radius:8px; background:#dc2626; color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;">IN</div>
-        <div>
-          <div style="font-weight:600; font-size:16px; color:#111827;">Indyanet HRM</div>
+    <div style="border-bottom:1px solid #d1d5db; padding-bottom:20px; margin-bottom:24px;">
+
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%">
+
+        <!-- Logo -->
+        <div style="display:flex; align-items:center; gap:12px;">
+          <img 
+            src="${logo.src}" 
+            alt="Indyanet Logo" 
+            style="height:48px; width:auto; object-fit:contain;"
+          />
         </div>
+
+        <!-- Company Details -->
+        <div style="text-align:center; flex:1;">
+          <div style="font-weight:700; font-size:20px; color:#111827;">
+            Indyanet
+          </div>
+
+          <div style="font-size:13px; color:#4b5563; line-height:1.3; margin-top:4px;">
+            Hustlehub Tech Park, 208, 27th Main Rd, ITI Layout, Sector 2,<br />
+            HSR Layout, Bengaluru, Karnataka 560102, India
+          </div>
+
+          <div style="font-size:13px; color:#4b5563; margin-top:4px;">
+            +91 81479 84043 &nbsp; | &nbsp; support@indyanet.com
+          </div>
+        </div>
+
+        <!-- Payslip Month -->
+        <div style="text-align:right; min-width:120px;">
+          <div style="font-size:11px; color:#6b7280;">Payslip for the Month</div>
+          <div style="font-size:14px; font-weight:600; color:#111827;">
+            ${payPeriod}
+          </div>
+        </div>
+
       </div>
-      <div style="text-align:right;">
-        <div style="font-size:11px; color:#6b7280;">Payslip for the Month</div>
-        <div style="font-size:14px; font-weight:600; color:#111827;">${payPeriod}</div>
-      </div>
+
     </div>
 
     <!-- Employee Info -->
@@ -208,12 +237,13 @@ function buildPayslipHTML(data: PayslipData) {
       <div><strong>UAN:</strong> ${uan}</div>
     </div>
 
-    <!-- EARNINGS & DEDUCTIONS -->
+    <!-- Earnings & Deductions -->
     <div style="margin-top:20px; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;">
       <div style="display:grid; grid-template-columns:1fr 1fr; background:#f9fafb; font-weight:600; color:#374151; font-size:13px;">
         <div style="padding:10px 14px; border-right:1px solid #e5e7eb;">EARNINGS</div>
         <div style="padding:10px 14px;">DEDUCTIONS</div>
       </div>
+
       <div style="display:grid; grid-template-columns:1fr 1fr;">
         <div style="border-right:1px solid #e5e7eb;">
           ${Object.entries(earnings)
@@ -225,6 +255,7 @@ function buildPayslipHTML(data: PayslipData) {
                  </div>`
             )
             .join("")}
+
           <div style="display:flex; justify-content:space-between; padding:10px 14px; background:#f9fafb; font-weight:600;">
             <span>Gross Earnings</span><span>${formatINR(gross)}</span>
           </div>
@@ -240,6 +271,7 @@ function buildPayslipHTML(data: PayslipData) {
                  </div>`
             )
             .join("")}
+
           <div style="display:flex; justify-content:space-between; padding:10px 14px; background:#f9fafb; font-weight:600;">
             <span>Total Deductions</span><span>${formatINR(totalDeductions)}</span>
           </div>
@@ -253,6 +285,7 @@ function buildPayslipHTML(data: PayslipData) {
         <div style="font-size:11px; color:#6b7280;">TOTAL NET PAYABLE</div>
         <div style="font-weight:600; font-size:16px; color:#111827;">${formatINR(net)}</div>
       </div>
+
       <div style="border:1px solid #bbf7d0; background:#ecfdf5; border-radius:10px; padding:14px; text-align:center;">
         <div style="font-size:11px; color:#6b7280;">Net Pay</div>
         <div style="font-size:22px; font-weight:700; color:#064e3b;">${formatINR(net)}</div>
@@ -263,7 +296,6 @@ function buildPayslipHTML(data: PayslipData) {
     <div style="margin-top:20px; text-align:center; font-size:12px; color:#6b7280;">
       Amount in words : <span style="font-weight:600; color:#111827;">${words}</span>
     </div>
-    <div style="margin-top:6px; text-align:center; font-size:11px; color:#9ca3af;">This is a system generated payslip.</div>
 
     <!-- Footer -->
     <div style="margin-top:28px; display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#374151;">
@@ -279,14 +311,29 @@ function buildPayslipHTML(data: PayslipData) {
           <div style="font-size:12px; color:#6b7280;">${designation}</div>
         </div>
       </div>
+
       <div style="text-align:right;">
         <div style="font-size:14px; font-weight:600; color:#dc2626;">HR Department</div>
         <div style="font-size:12px; color:#6b7280;">Authorized Signatory</div>
         <div style="margin-top:18px; border-top:1px solid #d1d5db; width:160px; margin-left:auto;"></div>
       </div>
     </div>
+
+    <!-- Bottom Notes -->
+    <div style="margin-top:30px; text-align:center; font-size:11px; color:#9ca3af;">
+      This is a system generated payslip.
+    </div>
+
+    <div style="margin-top:4px; text-align:center; font-size:12px; color:#6b7280;">
+      For any queries, please contact the HR Department:<br />
+      <span style="font-weight:600; color:#374151;">
+        support@indyanet.com &nbsp; | &nbsp; +91 81479 84043
+      </span>
+    </div>
+
   </div>
-  `;
+`;
+
 }
 
 /* ---------- PDF Generator ---------- */

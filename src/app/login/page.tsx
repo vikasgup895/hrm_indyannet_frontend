@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/auth";
 import { api } from "@/lib/api";
 import { Eye, EyeOff, Shield, User, Lock, Mail } from "lucide-react";
+import logo from "@/assets/logo.jpg";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -56,12 +57,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md animate-fade-in-up">
         {/* Header Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl mb-6 shadow-lg">
-            <Shield className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 ">
+            <img src={logo.src} alt="Indyanet HRM Logo" className="w-8 h-8" />
           </div>
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-[var(--text-muted)]">
-            Sign in to your Telecom HRM account
+            Sign in to your Indyanet HRM account
           </p>
         </div>
 

@@ -198,12 +198,12 @@ export default function SettingsEmployeePage() {
 
                     {/* Feedback messages */}
                     {error && (
-                      <p className="text-red-400 text-sm bg-red-900/30 p-2 rounded-md border border-red-700">
+                      <p className="text-red-600 text-sm bg-gray-100/20 p-2 rounded-md border border-red-700">
                         {error}
                       </p>
                     )}
                     {message && (
-                      <p className="text-green-400 text-sm bg-green-900/30 p-2 rounded-md border border-green-700">
+                      <p className="text-green-400 text-sm bg-gray-100/20 p-2 rounded-md border border-green-700">
                         {message}
                       </p>
                     )}

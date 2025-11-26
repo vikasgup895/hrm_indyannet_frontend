@@ -1,12 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    // ✅ Completely disable ESLint during builds
     ignoreDuringBuilds: true,
   },
-  output: 'export', // ✅ enables static HTML export (replaces next export)
   images: {
-    unoptimized: true, // ✅ required for static hosting like cPanel
+    unoptimized: true,
   },
   reactStrictMode: true,
 };

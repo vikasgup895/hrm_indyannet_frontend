@@ -94,7 +94,7 @@ export default function DashboardEmployee() {
       {/* Dashboard Grid */}
       <section className="grid gap-6 md:grid-cols-3">
         {/* Birthdays */}
-        <DashboardCard title="Team Birthdays" icon={Gift}>
+        <DashboardCard title="Upcoming Birthdays" icon={Gift}>
           {birthdays.length ? (
             <div className="space-y-3">
               {birthdays.map((b: any) => (

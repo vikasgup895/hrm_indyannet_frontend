@@ -31,6 +31,7 @@ import {
   IdCard,
   BanknoteIcon,
   Contact,
+  FileText,
 } from "lucide-react";
 
 /* =========================================================================
@@ -45,6 +46,14 @@ type EmployeeProfile = {
     pfNumber?: string;
     uan?: string;
   } | null;
+
+  // Documents uploaded by the employee (optional)
+  documents?: {
+    id: string;
+    title: string;
+    storageUrl: string;
+    createdAt: string;
+  }[];
 
   id: string;
   personNo: string;
@@ -246,6 +255,41 @@ export default function EmployeesEmployeePage() {
     setShowSensitive((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+
+// ------------fileupload -----------
+  const handleFileUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+  
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+  
+      const res = await api.post(
+        `/employees/${profile!.id}/upload`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+  
+      // refresh profile
+      const updated = await api.get("/employees/profile/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      setProfile(updated.data);
+      alert("Document uploaded successfully!");
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to upload document");
+    }
+  };
+  
+
   /* ----------------------------------------------
      SAVE PROFILE
      ---------------------------------------------- */
@@ -432,6 +476,59 @@ export default function EmployeesEmployeePage() {
 
           </div>
         </div>
+
+        {/* =============================================================
+    DOCUMENTS SECTION
+============================================================== */}
+<SectionCard icon={FileText} title="Uploaded Documents">
+  <div className="space-y-4">
+
+    {/* Upload Button */}
+    <div className="flex items-center justify-between">
+      <h4 className="text-[var(--text-primary)] font-medium">Your Documents</h4>
+
+      <label className="px-5 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
+        Upload Document
+        <input
+          type="file"
+          className="hidden"
+          onChange={handleFileUpload}
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+        />
+      </label>
+    </div>
+
+    {/* Documents List */}
+    {profile?.documents?.length ? (
+      <ul className="space-y-3">
+        {profile.documents.map((doc) => (
+          <li
+            key={doc.id}
+            className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]"
+          >
+            <div className="flex items-center gap-3">
+              <FileText className="text-indigo-500 w-5 h-5" />
+              <a
+                href={`http://localhost:4000/${doc.storageUrl}`}
+                target="_blank"
+                className="text-[var(--text-primary)] hover:underline"
+              >
+                {doc.title}
+              </a>
+            </div>
+
+            <span className="text-xs text-[var(--text-muted)]">
+              {new Date(doc.createdAt).toLocaleDateString("en-IN")}
+            </span>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="text-sm text-[var(--text-muted)]">No documents uploaded yet.</p>
+    )}
+  </div>
+</SectionCard>
+
 
         {/* =====================================================================
             EDIT MODAL (UNCHANGED)

@@ -598,13 +598,14 @@ type Employee = {
   emergencyContact?: string;
   gender?: string;
   address?: string;
+  role?: string;
   educationQualification?: string;
   birthdate?: string;
   designation?: string;
   department?: string;
   location?: string;
   status: string;
-  hireDate: string;
+  hireDate: string | null;
   manager?: {
     id: string;
     firstName: string;
@@ -685,9 +686,8 @@ const StatsCard = ({ icon: Icon, label, value, change, trend }: any) => (
       </div>
       {change && (
         <div
-          className={`text-sm font-medium ${
-            trend === "up" ? "text-green-500" : "text-red-500"
-          }`}
+          className={`text-sm font-medium ${trend === "up" ? "text-green-500" : "text-red-500"
+            }`}
         >
           {change}
         </div>
@@ -711,6 +711,8 @@ export default function EmployeesAdminPage() {
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+
 
   /* -------------------------------------------
      Form State
@@ -775,14 +777,13 @@ export default function EmployeesAdminPage() {
   /* -------------------------------------------
      Handle Add Employee
   -------------------------------------------- */
-  const handleAddEmployee = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-  
+
     setSubmitting(true);
-  
+
     try {
-      // ✅ Only send the fields backend expects in CreateEmployeeDto
       const employeeData = {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -794,39 +795,54 @@ export default function EmployeesAdminPage() {
         gender: form.gender || undefined,
         address: form.address || undefined,
         educationQualification: form.educationQualification || undefined,
-        birthdate: form.birthdate || undefined,
+        birthdate: form.birthdate ? new Date(form.birthdate).toISOString() : undefined,
         department: form.department || undefined,
         location: form.location || undefined,
-        hireDate: form.hireDate || new Date().toISOString(),
+        hireDate: form.hireDate ? new Date(form.hireDate).toISOString() : null,
         status: form.status || "Active",
         designation: form.designation || undefined,
-
       };
-  
-      const res = await api.post("/employees", employeeData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-  
-      const newEmployee = res.data;
-  
-      // ✅ Upload document if selected
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-  
-        await api.post(`/employees/${newEmployee.id}/upload`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
+
+      // 🔥 CHECK IF EDIT MODE
+      if (editingEmployee) {
+        const res = await api.put(`/employees/${editingEmployee.id}`, employeeData, {
+          headers: { Authorization: `Bearer ${token}` },
         });
+
+        setEmployees((prev) =>
+          prev.map((e) =>
+            e.id === editingEmployee.id ? { ...e, ...employeeData } : e
+          )
+        );
+
+        alert("Employee updated successfully.");
+      } else {
+        // CREATE NEW EMPLOYEE
+        const res = await api.post("/employees", employeeData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const newEmployee = res.data;
+
+        // Upload document if needed
+        if (selectedFile) {
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+
+          await api.post(`/employees/${newEmployee.id}/upload`, formData, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          });
+        }
+
+        setEmployees((prev) => [newEmployee, ...prev]);
       }
-  
-      // ✅ Update local state
-      setEmployees((prev) => [newEmployee, ...prev]);
-  
-      // ✅ Reset form
+
+      // RESET FORM
       setShowForm(false);
+      setEditingEmployee(null);
       setForm({
         firstName: "",
         lastName: "",
@@ -845,30 +861,20 @@ export default function EmployeesAdminPage() {
         status: "Active",
         salary: "",
         designation: "",
-
       });
       setSelectedFile(null);
       setFormErrors({});
-  
-      console.log("✅ Employee added successfully");
     } catch (err: any) {
-      console.error("❌ Failed to add employee:", err);
-      console.error("Server response:", err.response?.data);
-      alert(
-        err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Failed to create employee"
-      );
+      alert(err.response?.data?.message || "Failed to save employee");
     } finally {
       setSubmitting(false);
     }
   };
-  
   // inside the EmployeesAdminPage component (top-level of page.admin.tsx)
   const deactivateEmployee = async (employeeId: string) => {
     // simple confirmation
     if (!window.confirm('Mark this employee as Inactive? This will change their status.')) return;
-  
+
     try {
       // call existing update endpoint (PUT /employees/:id) to update only the status
       const res = await api.put(
@@ -876,12 +882,12 @@ export default function EmployeesAdminPage() {
         { status: 'Inactive' },
         { headers: { Authorization: `Bearer ${token}` } },
       );
-  
+
       // update local state (immutable map)
       setEmployees((prev) =>
         prev.map((e) => (e.id === employeeId ? { ...e, status: 'Inactive' } : e))
       );
-  
+
       alert('Employee marked as Inactive.');
     } catch (err: any) {
       console.error('Failed to deactivate employee:', err);
@@ -894,15 +900,15 @@ export default function EmployeesAdminPage() {
     if (!window.confirm("Are you sure you want to permanently delete this employee? This action cannot be undone.")) {
       return;
     }
-  
+
     try {
       await api.delete(`/employees/${employeeId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       // Update UI
       setEmployees((prev) => prev.filter((e) => e.id !== employeeId));
-  
+
       alert("Employee deleted successfully.");
     } catch (err: any) {
       console.error("Failed to delete employee:", err);
@@ -910,14 +916,40 @@ export default function EmployeesAdminPage() {
     }
   };
   
+  const startEdit = (emp: Employee) => {
+    setEditingEmployee(emp);
+  
+    setForm({
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      workEmail: emp.workEmail,
+      personalEmail: emp.personalEmail || "",
+      phone: emp.phone || "",
+      emergencyContact: emp.emergencyContact || "",
+      gender: emp.gender || "",
+      address: emp.address || "",
+      educationQualification: emp.educationQualification || "",
+      birthdate: emp.birthdate ? emp.birthdate.split("T")[0] : "",
+      designation: emp.designation || "",
+      role: emp.role || "",
+      department: emp.department || "",
+      location: emp.location || "",
+      hireDate: emp.hireDate ? emp.hireDate.split("T")[0] : "",
+      status: emp.status,
+      salary: "",
+    });
+  
+    setShowForm(true); // Open the same form in edit mode
+  };
+  
 
   const getNewHireCount = (employees: any[]): number => {
     if (!employees || employees.length === 0) return 0;
-  
+
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-  
+
     return employees.filter(emp => {
       if (!emp.hireDate) return false;
       const hireDate = new Date(emp.hireDate);
@@ -927,7 +959,7 @@ export default function EmployeesAdminPage() {
       );
     }).length;
   };
-  
+
   /* -------------------------------------------
      Filtering
   -------------------------------------------- */
@@ -981,11 +1013,10 @@ export default function EmployeesAdminPage() {
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 ${
-              showForm
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 ${showForm
                 ? "bg-[var(--hover-bg)] text-[var(--text-primary)]"
                 : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-            }`}
+              }`}
           >
             {showForm ? (
               <>
@@ -1034,11 +1065,11 @@ export default function EmployeesAdminPage() {
         {/* Add Employee Form */}
         {showForm && (
           <form
-            onSubmit={handleAddEmployee}
+            onSubmit={handleSubmit}
             className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-lg mb-8 p-8 space-y-6 transition-colors"
           >
             <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-              <UserPlus className="text-blue-500" /> Add New Employee
+              <UserPlus className="text-blue-500" /> {editingEmployee ? "Update Employee" : "Add New Employee"}
             </h2>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -1126,18 +1157,18 @@ export default function EmployeesAdminPage() {
 
 
               <FormField label="Role" required error={formErrors.role}>
-  <Select
-    value={form.role}
-    onChange={(e: any) =>
-      setForm({ ...form, role: e.target.value })
-    }
-  >
-    <option value="">Select Role</option>
-    <option value="EMPLOYEE">Employee</option>
-    {role === "ADMIN" && <option value="HR">HR</option>}
-    {role === "ADMIN" && <option value="ADMIN">Admin</option>}
-  </Select>
-</FormField>
+                <Select
+                  value={form.role}
+                  onChange={(e: any) =>
+                    setForm({ ...form, role: e.target.value })
+                  }
+                >
+                  <option value="">Select Role</option>
+                  <option value="EMPLOYEE">Employee</option>
+                  {role === "ADMIN" && <option value="HR">HR</option>}
+                  {role === "ADMIN" && <option value="ADMIN">Admin</option>}
+                </Select>
+              </FormField>
 
               <FormField label="Birthday">
                 <Input
@@ -1145,6 +1176,15 @@ export default function EmployeesAdminPage() {
                   value={form.birthdate}
                   onChange={(e: any) =>
                     setForm({ ...form, birthdate: e.target.value })
+                  }
+                />
+              </FormField>
+              <FormField label="Hire Date">
+                <Input
+                  type="date"
+                  value={form.hireDate}
+                  onChange={(e: any) =>
+                    setForm({ ...form, hireDate: e.target.value })
                   }
                 />
               </FormField>
@@ -1183,14 +1223,14 @@ export default function EmployeesAdminPage() {
                 />
               </FormField>
               <FormField label="Designation" required>
-  <Input
-    type="text"
-    value={form.designation}
-    onChange={(e: any) =>
-      setForm({ ...form, designation: e.target.value })
-    }
-  />
-</FormField>
+                <Input
+                  type="text"
+                  value={form.designation}
+                  onChange={(e: any) =>
+                    setForm({ ...form, designation: e.target.value })
+                  }
+                />
+              </FormField>
 
 
               <FormField label="Location">
@@ -1237,7 +1277,7 @@ export default function EmployeesAdminPage() {
                 disabled={submitting}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg transition-all duration-200 disabled:opacity-40"
               >
-                {submitting ? "Adding..." : "Add Employee"}
+                {submitting ? (editingEmployee ? "Updating..." : "Adding...") : (editingEmployee ? "Update Employee" : "Add Employee")}
               </button>
             </div>
           </form>
@@ -1264,7 +1304,7 @@ export default function EmployeesAdminPage() {
               </thead>
               <tbody className="divide-y divide-[var(--border-color)]">
                 {filteredEmployees.map((employee) => (
-                    <React.Fragment key={employee.id}>
+                  <React.Fragment key={employee.id}>
                     <tr
                       className="hover:bg-[var(--hover-bg)] transition-colors"
                     >
@@ -1299,11 +1339,10 @@ export default function EmployeesAdminPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${
-                            employee.status === "Active"
+                          className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${employee.status === "Active"
                               ? "bg-green-500/10 text-green-600"
                               : "bg-red-500/10 text-red-600"
-                          }`}
+                            }`}
                         >
                           {employee.status}
                         </span>
@@ -1329,7 +1368,7 @@ export default function EmployeesAdminPage() {
                     {openRow === employee.id && (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           className="bg-[var(--hover-bg)] px-8 py-6"
                         >
                           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
@@ -1360,36 +1399,52 @@ export default function EmployeesAdminPage() {
                               Birthday:{" "}
                               {employee.birthdate
                                 ? new Date(
-                                    employee.birthdate
-                                  ).toLocaleDateString()
+                                  employee.birthdate
+                                ).toLocaleDateString()
                                 : "—"}
                             </p>
                           </div>
-                          <div className="col-span-full mt-4 border-t border-[var(--border-color)] pt-4">
-  <div className="flex items-center justify-between mb-2">
-    <h4 className="font-semibold text-[var(--text-primary)]">
+                          <div className="col-span-full mt-6 border-t border-[var(--border-color)] pt-6">
+  {/* Header + Actions */}
+  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+
+    {/* Left Title */}
+    <h4 className="font-semibold text-[var(--text-primary)] text-lg">
       Uploaded Documents
     </h4>
 
-    {employee.status === 'Active' && (
-      <button
-        onClick={() => deactivateEmployee(employee.id)}
-        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm shadow-sm transition-all"
-        title="Mark employee as inactive"
-      >
-        Mark Inactive
-      </button>
-    )}
-    <button
-  onClick={() => deleteEmployee(employee.id)}
-  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm shadow-sm transition-all"
-  title="Delete employee permanently"
->
-  Delete
-</button>
+    {/* Right Side Buttons */}
+    <div className="flex items-center gap-3">
 
+      {employee.status === "Active" && (
+        <button
+          onClick={() => deactivateEmployee(employee.id)}
+          className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+        >
+          Mark Inactive
+        </button>
+      )}
+
+      <button
+        onClick={() => deleteEmployee(employee.id)}
+        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+      >
+        Delete
+      </button>
+
+      {(role === "HR" || role === "ADMIN") && (
+        <button
+          onClick={() => startEdit(employee)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+        >
+          Edit
+        </button>
+      )}
+
+    </div>
   </div>
 
+  {/* Document List */}
   {employee.documents?.length ? (
     <ul className="space-y-2">
       {employee.documents.map((doc) => (
@@ -1406,16 +1461,17 @@ export default function EmployeesAdminPage() {
       ))}
     </ul>
   ) : (
-    <p className="text-sm text-[var(--text-muted)]">
+    <p className="text-sm text-[var(--text-muted)] italic">
       No documents uploaded.
     </p>
   )}
 </div>
 
+
                         </td>
                       </tr>
                     )}
-                    </React.Fragment>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>

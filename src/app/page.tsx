@@ -11,8 +11,8 @@ export default function Home() {
       <header className="w-full border-b bg-white/70 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image src="/next.svg" alt="Logo" width={32} height={32} />
-            <span className="font-bold text-lg text-blue-700">Telecom HRM</span>
+            <Image src="./favicon.ico" alt="Logo" width={32} height={32} />
+            <span className="font-bold text-lg text-blue-700">Indyanet Telecom HRM</span>
           </div>
           <nav className="hidden sm:flex gap-6 text-gray-600 font-medium">
             <a href="#" className="hover:text-blue-600">
@@ -91,9 +91,20 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-white/70 backdrop-blur-md py-6 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} Telecom HRM. All rights reserved.
-      </footer>
+      {/* Footer - Compact Version */}
+<footer className="border-t border-gray-200 bg-white/80 backdrop-blur-lg py-4">
+
+    
+
+    {/* Copyright */}
+    <div className=" border-gray-200 pt-1 text-center">
+      <p className="text-sm text-gray-500">
+        © {new Date().getFullYear()} Indyanet HR Management System. All rights reserved.
+      </p>
+    </div>
+</footer>
     </div>
   );
 }
+
+

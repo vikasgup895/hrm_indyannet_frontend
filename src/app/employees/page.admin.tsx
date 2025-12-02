@@ -653,7 +653,11 @@ const FormField = ({
 const Input = ({ className = "", error = false, ...props }: any) => (
   <input
     className={`w-full px-4 py-3 rounded-xl text-[var(--text-primary)] bg-[var(--input-bg)] border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500
-      ${error ? "border-red-500" : "border-[var(--border-color)] hover:border-blue-400"} ${className}`}
+      ${
+        error
+          ? "border-red-500"
+          : "border-[var(--border-color)] hover:border-blue-400"
+      } ${className}`}
     {...props}
   />
 );
@@ -661,7 +665,11 @@ const Input = ({ className = "", error = false, ...props }: any) => (
 const Select = ({ children, className = "", error = false, ...props }: any) => (
   <select
     className={`w-full px-4 py-3 rounded-xl text-[var(--text-primary)] bg-[var(--input-bg)] border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500
-      ${error ? "border-red-500" : "border-[var(--border-color)] hover:border-blue-400"} ${className}`}
+      ${
+        error
+          ? "border-red-500"
+          : "border-[var(--border-color)] hover:border-blue-400"
+      } ${className}`}
     {...props}
   >
     {children}
@@ -686,8 +694,9 @@ const StatsCard = ({ icon: Icon, label, value, change, trend }: any) => (
       </div>
       {change && (
         <div
-          className={`text-sm font-medium ${trend === "up" ? "text-green-500" : "text-red-500"
-            }`}
+          className={`text-sm font-medium ${
+            trend === "up" ? "text-green-500" : "text-red-500"
+          }`}
         >
           {change}
         </div>
@@ -709,10 +718,10 @@ export default function EmployeesAdminPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [openRow, setOpenRow] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("all");
+  // Filter tabs: default to Active per requirement
+  const [activeTab, setActiveTab] = useState("active");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-
 
   /* -------------------------------------------
      Form State
@@ -795,7 +804,9 @@ export default function EmployeesAdminPage() {
         gender: form.gender || undefined,
         address: form.address || undefined,
         educationQualification: form.educationQualification || undefined,
-        birthdate: form.birthdate ? new Date(form.birthdate).toISOString() : undefined,
+        birthdate: form.birthdate
+          ? new Date(form.birthdate).toISOString()
+          : undefined,
         department: form.department || undefined,
         location: form.location || undefined,
         hireDate: form.hireDate ? new Date(form.hireDate).toISOString() : null,
@@ -805,9 +816,13 @@ export default function EmployeesAdminPage() {
 
       // 🔥 CHECK IF EDIT MODE
       if (editingEmployee) {
-        const res = await api.put(`/employees/${editingEmployee.id}`, employeeData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.put(
+          `/employees/${editingEmployee.id}`,
+          employeeData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         setEmployees((prev) =>
           prev.map((e) =>
@@ -873,31 +888,42 @@ export default function EmployeesAdminPage() {
   // inside the EmployeesAdminPage component (top-level of page.admin.tsx)
   const deactivateEmployee = async (employeeId: string) => {
     // simple confirmation
-    if (!window.confirm('Mark this employee as Inactive? This will change their status.')) return;
+    if (
+      !window.confirm(
+        "Mark this employee as Inactive? This will change their status."
+      )
+    )
+      return;
 
     try {
       // call existing update endpoint (PUT /employees/:id) to update only the status
       const res = await api.put(
         `/employees/${employeeId}`,
-        { status: 'Inactive' },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { status: "Inactive" },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // update local state (immutable map)
       setEmployees((prev) =>
-        prev.map((e) => (e.id === employeeId ? { ...e, status: 'Inactive' } : e))
+        prev.map((e) =>
+          e.id === employeeId ? { ...e, status: "Inactive" } : e
+        )
       );
 
-      alert('Employee marked as Inactive.');
+      alert("Employee marked as Inactive.");
     } catch (err: any) {
-      console.error('Failed to deactivate employee:', err);
-      alert(err?.response?.data?.message || 'Failed to update status');
+      console.error("Failed to deactivate employee:", err);
+      alert(err?.response?.data?.message || "Failed to update status");
     }
   };
 
   /* ----------------- delete Employee --------------------------*/
   const deleteEmployee = async (employeeId: string) => {
-    if (!window.confirm("Are you sure you want to permanently delete this employee? This action cannot be undone.")) {
+    if (
+      !window.confirm(
+        "Are you sure you want to permanently delete this employee? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
@@ -915,10 +941,10 @@ export default function EmployeesAdminPage() {
       alert(err?.response?.data?.message || "Failed to delete employee.");
     }
   };
-  
+
   const startEdit = (emp: Employee) => {
     setEditingEmployee(emp);
-  
+
     setForm({
       firstName: emp.firstName,
       lastName: emp.lastName,
@@ -938,10 +964,9 @@ export default function EmployeesAdminPage() {
       status: emp.status,
       salary: "",
     });
-  
+
     setShowForm(true); // Open the same form in edit mode
   };
-  
 
   const getNewHireCount = (employees: any[]): number => {
     if (!employees || employees.length === 0) return 0;
@@ -950,7 +975,7 @@ export default function EmployeesAdminPage() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    return employees.filter(emp => {
+    return employees.filter((emp) => {
       if (!emp.hireDate) return false;
       const hireDate = new Date(emp.hireDate);
       return (
@@ -1013,10 +1038,11 @@ export default function EmployeesAdminPage() {
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 ${showForm
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 ${
+              showForm
                 ? "bg-[var(--hover-bg)] text-[var(--text-primary)]"
                 : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-              }`}
+            }`}
           >
             {showForm ? (
               <>
@@ -1037,8 +1063,16 @@ export default function EmployeesAdminPage() {
             label="Total Employees"
             value={employees.length}
           />
-          <StatsCard icon={UserCheck} label="Active Employees" value={employees.filter(e => e.status === 'Active').length} />
-          <StatsCard icon={UserPlus} label="New Hires (This Month)" value={getNewHireCount(employees)} />
+          <StatsCard
+            icon={UserCheck}
+            label="Active Employees"
+            value={employees.filter((e) => e.status === "Active").length}
+          />
+          <StatsCard
+            icon={UserPlus}
+            label="New Hires (This Month)"
+            value={getNewHireCount(employees)}
+          />
           <StatsCard
             icon={GraduationCap}
             label="Employee Records"
@@ -1046,9 +1080,9 @@ export default function EmployeesAdminPage() {
           />
         </div>
 
-        {/* Search */}
+        {/* Search + Status Filter (All / Active / Inactive) */}
         <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm mb-8 p-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-stretch">
             <div className="flex-1 relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
               <input
@@ -1058,6 +1092,28 @@ export default function EmployeesAdminPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[var(--text-muted)]">Status:</span>
+              <div className="flex bg-[var(--hover-bg)] rounded-xl p-1">
+                {[
+                  { key: "all", label: "All" },
+                  { key: "active", label: "Active" },
+                  { key: "inactive", label: "Inactive" },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                      activeTab === key
+                        ? "bg-blue-600 text-white"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1069,7 +1125,8 @@ export default function EmployeesAdminPage() {
             className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-lg mb-8 p-8 space-y-6 transition-colors"
           >
             <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-              <UserPlus className="text-blue-500" /> {editingEmployee ? "Update Employee" : "Add New Employee"}
+              <UserPlus className="text-blue-500" />{" "}
+              {editingEmployee ? "Update Employee" : "Add New Employee"}
             </h2>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -1155,7 +1212,6 @@ export default function EmployeesAdminPage() {
                 </Select>
               </FormField>
 
-
               <FormField label="Role" required error={formErrors.role}>
                 <Select
                   value={form.role}
@@ -1232,7 +1288,6 @@ export default function EmployeesAdminPage() {
                 />
               </FormField>
 
-
               <FormField label="Location">
                 <Input
                   type="text"
@@ -1277,7 +1332,13 @@ export default function EmployeesAdminPage() {
                 disabled={submitting}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg transition-all duration-200 disabled:opacity-40"
               >
-                {submitting ? (editingEmployee ? "Updating..." : "Adding...") : (editingEmployee ? "Update Employee" : "Add Employee")}
+                {submitting
+                  ? editingEmployee
+                    ? "Updating..."
+                    : "Adding..."
+                  : editingEmployee
+                  ? "Update Employee"
+                  : "Add Employee"}
               </button>
             </div>
           </form>
@@ -1305,9 +1366,7 @@ export default function EmployeesAdminPage() {
               <tbody className="divide-y divide-[var(--border-color)]">
                 {filteredEmployees.map((employee) => (
                   <React.Fragment key={employee.id}>
-                    <tr
-                      className="hover:bg-[var(--hover-bg)] transition-colors"
-                    >
+                    <tr className="hover:bg-[var(--hover-bg)] transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
@@ -1339,10 +1398,11 @@ export default function EmployeesAdminPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${employee.status === "Active"
+                          className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${
+                            employee.status === "Active"
                               ? "bg-green-500/10 text-green-600"
                               : "bg-red-500/10 text-red-600"
-                            }`}
+                          }`}
                         >
                           {employee.status}
                         </span>
@@ -1399,75 +1459,72 @@ export default function EmployeesAdminPage() {
                               Birthday:{" "}
                               {employee.birthdate
                                 ? new Date(
-                                  employee.birthdate
-                                ).toLocaleDateString()
+                                    employee.birthdate
+                                  ).toLocaleDateString()
                                 : "—"}
                             </p>
                           </div>
                           <div className="col-span-full mt-6 border-t border-[var(--border-color)] pt-6">
-  {/* Header + Actions */}
-  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                            {/* Header + Actions */}
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                              {/* Left Title */}
+                              <h4 className="font-semibold text-[var(--text-primary)] text-lg">
+                                Uploaded Documents
+                              </h4>
 
-    {/* Left Title */}
-    <h4 className="font-semibold text-[var(--text-primary)] text-lg">
-      Uploaded Documents
-    </h4>
+                              {/* Right Side Buttons */}
+                              <div className="flex items-center gap-3">
+                                {employee.status === "Active" && (
+                                  <button
+                                    onClick={() =>
+                                      deactivateEmployee(employee.id)
+                                    }
+                                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                                  >
+                                    Mark Inactive
+                                  </button>
+                                )}
 
-    {/* Right Side Buttons */}
-    <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => deleteEmployee(employee.id)}
+                                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                                >
+                                  Delete
+                                </button>
 
-      {employee.status === "Active" && (
-        <button
-          onClick={() => deactivateEmployee(employee.id)}
-          className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
-        >
-          Mark Inactive
-        </button>
-      )}
+                                {(role === "HR" || role === "ADMIN") && (
+                                  <button
+                                    onClick={() => startEdit(employee)}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                                  >
+                                    Edit
+                                  </button>
+                                )}
+                              </div>
+                            </div>
 
-      <button
-        onClick={() => deleteEmployee(employee.id)}
-        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
-      >
-        Delete
-      </button>
-
-      {(role === "HR" || role === "ADMIN") && (
-        <button
-          onClick={() => startEdit(employee)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
-        >
-          Edit
-        </button>
-      )}
-
-    </div>
-  </div>
-
-  {/* Document List */}
-  {employee.documents?.length ? (
-    <ul className="space-y-2">
-      {employee.documents.map((doc) => (
-        <li key={doc.id}>
-          <a
-            href={`http://localhost:4000/${doc.storageUrl}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
-          >
-            📄 {doc.title}
-          </a>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    <p className="text-sm text-[var(--text-muted)] italic">
-      No documents uploaded.
-    </p>
-  )}
-</div>
-
-
+                            {/* Document List */}
+                            {employee.documents?.length ? (
+                              <ul className="space-y-2">
+                                {employee.documents.map((doc) => (
+                                  <li key={doc.id}>
+                                    <a
+                                      href={`http://localhost:4000/${doc.storageUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:underline"
+                                    >
+                                      📄 {doc.title}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-[var(--text-muted)] italic">
+                                No documents uploaded.
+                              </p>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -1481,4 +1538,3 @@ export default function EmployeesAdminPage() {
     </div>
   );
 }
-

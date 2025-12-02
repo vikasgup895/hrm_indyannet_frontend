@@ -51,6 +51,15 @@ interface ConvenienceCharge {
   };
 }
 
+interface InsuranceDocument {
+  id: string;
+  title: string;
+  type: string;
+  storageUrl: string;
+  createdAt: string;
+  employee?: { id: string; firstName: string; lastName: string };
+}
+
 export default function ECashPage() {
   const { token } = useAuth(); // Removed employeeId from destructuring
   const { theme } = useTheme();
@@ -64,6 +73,8 @@ export default function ECashPage() {
   >([]);
   const [chargesLoading, setChargesLoading] = useState(false);
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string>("");
+  const [docs, setDocs] = useState<InsuranceDocument[]>([]);
+  const [docsLoading, setDocsLoading] = useState(false);
 
   // 🧩 Fetch convenience charges by first getting insurance to extract employeeId
   useEffect(() => {
@@ -85,6 +96,7 @@ export default function ECashPage() {
 
           // Fetch convenience charges for this employee
           await fetchConvenienceCharges(employeeId);
+          await fetchDocuments();
         } else {
           // No insurance found. Try a safer fallback:
           // 1) Attempt to extract employeeId from the JWT payload (client-side) and
@@ -99,6 +111,7 @@ export default function ECashPage() {
             if (employeeIdFromToken) {
               setCurrentEmployeeId(employeeIdFromToken);
               await fetchConvenienceCharges(employeeIdFromToken);
+              await fetchDocuments();
             } else {
               // no employee id available from token
               setConvenienceCharges([]);
@@ -127,6 +140,22 @@ export default function ECashPage() {
         // Fail silently for users; don't expose sensitive error details
       } finally {
         setChargesLoading(false);
+      }
+    };
+
+    const fetchDocuments = async () => {
+      setDocsLoading(true);
+      try {
+        // Employee role: backend automatically scopes to own documents
+        const res = await api.get("/insurance/docs", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setDocs(res.data || []);
+      } catch (err) {
+        console.error("[Insurance Docs] Fetch Error:", err);
+        setDocs([]);
+      } finally {
+        setDocsLoading(false);
       }
     };
 
@@ -433,6 +462,77 @@ export default function ECashPage() {
             </table>
           </div>
         )}
+      </section>
+
+      {/* Insurance Documents */}
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold flex items-center gap-2 text-[var(--text-primary)]">
+          <FileText className="text-blue-500" /> My Insurance Documents
+        </h2>
+        <div className="mt-4 border border-[var(--border-color)] rounded-xl bg-[var(--card-bg)] overflow-x-auto">
+          <table className="min-w-full text-sm text-[var(--text-primary)]">
+            <thead>
+              <tr className="bg-[var(--hover-bg)] text-[var(--text-muted)] text-left">
+                <th className="p-3">Insurance No</th>
+                <th className="p-3">Uploaded</th>
+                <th className="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {docsLoading ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="p-4 text-center text-[var(--text-muted)]"
+                  >
+                    Loading documents...
+                  </td>
+                </tr>
+              ) : docs.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="p-4 text-center text-[var(--text-muted)]"
+                  >
+                    No documents uploaded yet.
+                  </td>
+                </tr>
+              ) : (
+                docs.map((d) => (
+                  <tr
+                    key={d.id}
+                    className="border-t border-[var(--border-color)] hover:bg-[var(--hover-bg)] transition-colors"
+                  >
+                    <td className="p-3">{d.title}</td>
+                    <td className="p-3">
+                      {d.createdAt
+                        ? new Date(d.createdAt).toLocaleDateString()
+                        : "—"}
+                    </td>
+                    <td className="p-3">
+                      {d.storageUrl ? (
+                        <a
+                          href={`${
+                            process.env.NODE_ENV === "production"
+                              ? "https://hrm.indyanet.com"
+                              : "http://localhost:4000"
+                          }${d.storageUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">N/A</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   );

@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
-import { UserCheck, User, Calendar, Coins, FileText, Plus, Trash2, Edit } from "lucide-react";
+import {
+  UserCheck,
+  User,
+  Calendar,
+  Coins,
+  FileText,
+  Plus,
+  Trash2,
+  Edit,
+  Search,
+} from "lucide-react";
 import { useAuth } from "@/store/auth";
 
 // Define TypeScript interfaces
@@ -13,6 +23,8 @@ interface Employee {
   personNo: string;
   workEmail: string;
   department: string;
+  // Only show employees with Active status in search/select lists
+  status?: string;
 }
 
 interface ConvenienceCharge {
@@ -34,16 +46,31 @@ export default function ConvenienceChargePage() {
   const { token } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState("");
+
+  // Separate states for Assign and View tabs
+  const [assignSearch, setAssignSearch] = useState("");
+  const [viewSearch, setViewSearch] = useState("");
+  const [assignDropdown, setAssignDropdown] = useState(false);
+  const [viewDropdown, setViewDropdown] = useState(false);
+
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
-  const [existingCharges, setExistingCharges] = useState<ConvenienceCharge[]>([]);
-  const [editingCharge, setEditingCharge] = useState<ConvenienceCharge | null>(null);
+  const [existingCharges, setExistingCharges] = useState<ConvenienceCharge[]>(
+    []
+  );
+  const [editingCharge, setEditingCharge] = useState<ConvenienceCharge | null>(
+    null
+  );
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [chargesLoading, setChargesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"assign" | "view">("assign");
+
+  // Refs for click outside detection
+  const assignDropdownRef = useRef<HTMLDivElement>(null);
+  const viewDropdownRef = useRef<HTMLDivElement>(null);
 
   // Load employees
   useEffect(() => {
@@ -52,7 +79,11 @@ export default function ConvenienceChargePage() {
         const res = await api.get("/employees", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setEmployees(res.data);
+        // Keep only active employees in lists
+        const onlyActive = (res.data || []).filter(
+          (e: Employee) => (e.status || "").toLowerCase() === "active"
+        );
+        setEmployees(onlyActive);
       } catch (err) {
         console.error("Failed to load employees", err);
         alert("❌ Failed to load employees");
@@ -62,6 +93,29 @@ export default function ConvenienceChargePage() {
     };
     if (token) loadEmployees();
   }, [token]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // Close assign dropdown if clicked outside
+      if (
+        assignDropdownRef.current &&
+        !assignDropdownRef.current.contains(e.target as Node)
+      ) {
+        setAssignDropdown(false);
+      }
+
+      // Close view dropdown if clicked outside
+      if (
+        viewDropdownRef.current &&
+        !viewDropdownRef.current.contains(e.target as Node)
+      ) {
+        setViewDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Load existing charges when employee is selected
   useEffect(() => {
@@ -131,7 +185,8 @@ export default function ConvenienceChargePage() {
       }
     } catch (err: any) {
       console.error("Save failed:", err);
-      const errorMessage = err.response?.data?.message || "Error assigning convenience charge";
+      const errorMessage =
+        err.response?.data?.message || "Error assigning convenience charge";
       alert(`❌ ${errorMessage}`);
     } finally {
       setSubmitting(false);
@@ -151,7 +206,8 @@ export default function ConvenienceChargePage() {
       }
     } catch (err: any) {
       console.error("Delete failed:", err);
-      const errorMessage = err.response?.data?.message || "Error deleting charge";
+      const errorMessage =
+        err.response?.data?.message || "Error deleting charge";
       alert(`❌ ${errorMessage}`);
     }
   };
@@ -161,7 +217,7 @@ export default function ConvenienceChargePage() {
     setSelectedEmployee(charge.employeeId);
     setTitle(charge.title);
     setAmount(charge.amount.toString());
-    setDate(charge.date.split('T')[0]); // Format date for input
+    setDate(charge.date.split("T")[0]); // Format date for input
     setActiveTab("assign");
   };
 
@@ -174,8 +230,58 @@ export default function ConvenienceChargePage() {
   };
 
   const getSelectedEmployeeName = () => {
-    const employee = employees.find(emp => emp.id === selectedEmployee);
+    const employee = employees.find((emp) => emp.id === selectedEmployee);
     return employee ? `${employee.firstName} ${employee.lastName}` : "";
+  };
+
+  // Filter employees for Assign tab
+  const filteredAssignEmployees = employees.filter((emp) => {
+    const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+    const personNo = emp.personNo.toLowerCase();
+    const department = emp.department?.toLowerCase() || "";
+    const email = emp.workEmail?.toLowerCase() || "";
+    const query = assignSearch.toLowerCase();
+
+    return (
+      fullName.includes(query) ||
+      personNo.includes(query) ||
+      department.includes(query) ||
+      email.includes(query)
+    );
+  });
+
+  // Filter employees for View tab
+  const filteredViewEmployees = employees.filter((emp) => {
+    const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+    const personNo = emp.personNo.toLowerCase();
+    const department = emp.department?.toLowerCase() || "";
+    const email = emp.workEmail?.toLowerCase() || "";
+    const query = viewSearch.toLowerCase();
+
+    return (
+      fullName.includes(query) ||
+      personNo.includes(query) ||
+      department.includes(query) ||
+      email.includes(query)
+    );
+  });
+
+  const handleSelectAssignEmployee = (empId: string) => {
+    setSelectedEmployee(empId);
+    setAssignDropdown(false);
+    const employee = employees.find((emp) => emp.id === empId);
+    if (employee) {
+      setAssignSearch(`${employee.firstName} ${employee.lastName}`);
+    }
+  };
+
+  const handleSelectViewEmployee = (empId: string) => {
+    setSelectedEmployee(empId);
+    setViewDropdown(false);
+    const employee = employees.find((emp) => emp.id === empId);
+    if (employee) {
+      setViewSearch(`${employee.firstName} ${employee.lastName}`);
+    }
   };
 
   if (loading) return <p className="p-6 text-center">Loading employees...</p>;
@@ -239,21 +345,60 @@ export default function ConvenienceChargePage() {
               <label className="text-sm font-medium mb-2 block text-[var(--text-primary)]">
                 Select Employee *
               </label>
-              <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)] transition-colors">
-                <UserCheck className="w-5 h-5 text-[var(--text-muted)]" />
-                <select
-                  value={selectedEmployee}
-                  onChange={(e) => setSelectedEmployee(e.target.value)}
-                  className="w-full bg-transparent outline-none text-[var(--text-primary)]"
-                  disabled={editingCharge !== null} // Disable when editing
-                >
-                  <option value="">-- Choose Employee --</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName} ({emp.personNo}) - {emp.department}
-                    </option>
-                  ))}
-                </select>
+
+              {/* Search Input */}
+              <div className="relative" ref={assignDropdownRef}>
+                <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)] transition-colors">
+                  <Search className="w-5 h-5 text-[var(--text-muted)]" />
+                  <input
+                    type="text"
+                    value={assignSearch}
+                    onChange={(e) => {
+                      setAssignSearch(e.target.value);
+                      setSelectedEmployee("");
+                      setAssignDropdown(true);
+                    }}
+                    onFocus={() => setAssignDropdown(true)}
+                    placeholder="Search by name, ID, department, or email..."
+                    className="w-full bg-transparent outline-none text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                    disabled={editingCharge !== null}
+                  />
+                </div>
+
+                {/* Dropdown List */}
+                {assignDropdown && !editingCharge && (
+                  <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto border border-[var(--border-color)] rounded-lg bg-[var(--card-bg)] shadow-lg">
+                    {filteredAssignEmployees.length > 0 ? (
+                      filteredAssignEmployees.map((emp) => (
+                        <button
+                          key={emp.id}
+                          type="button"
+                          onClick={() => handleSelectAssignEmployee(emp.id)}
+                          className="w-full text-left px-4 py-3 hover:bg-[var(--hover-bg)] transition-colors border-b border-[var(--border-color)] last:border-b-0"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-semibold">
+                              {emp.firstName[0]}
+                              {emp.lastName[0]}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-[var(--text-primary)]">
+                                {emp.firstName} {emp.lastName}
+                              </p>
+                              <p className="text-xs text-[var(--text-muted)]">
+                                {emp.personNo} • {emp.department}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-4 py-3 text-sm text-[var(--text-muted)] text-center">
+                        No employees found matching "{assignSearch}"
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -285,7 +430,6 @@ export default function ConvenienceChargePage() {
                   onChange={(e) => setAmount(e.target.value)}
                   type="number"
                   min="0"
-                  
                   placeholder="0"
                   className="w-full bg-transparent outline-none text-[var(--text-primary)]"
                 />
@@ -315,9 +459,13 @@ export default function ConvenienceChargePage() {
                 disabled={submitting}
                 className="flex-1 bg-purple-600 text-white py-2.5 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium"
               >
-                {submitting ? "Saving..." : editingCharge ? "Update Charge" : "Assign Charge"}
+                {submitting
+                  ? "Saving..."
+                  : editingCharge
+                  ? "Update Charge"
+                  : "Assign Charge"}
               </button>
-              
+
               {editingCharge && (
                 <button
                   onClick={resetForm}
@@ -336,18 +484,30 @@ export default function ConvenienceChargePage() {
               <Coins className="w-5 h-5 text-amber-500" />
               Charge Preview
             </h2>
-            
+
             {selectedEmployee ? (
               <div className="space-y-4">
                 <div className="p-4 border border-[var(--border-color)] rounded-lg bg-[var(--hover-bg)]">
                   <p className="font-medium text-[var(--text-primary)]">
                     Employee: {getSelectedEmployeeName()}
                   </p>
-                  {title && <p className="text-sm text-[var(--text-primary)]">Charge: {title}</p>}
-                  {amount && <p className="text-sm text-green-500">Amount: ₹{Number(amount).toLocaleString()}</p>}
-                  {date && <p className="text-sm text-[var(--text-muted)]">Date: {new Date(date).toLocaleDateString()}</p>}
+                  {title && (
+                    <p className="text-sm text-[var(--text-primary)]">
+                      Charge: {title}
+                    </p>
+                  )}
+                  {amount && (
+                    <p className="text-sm text-green-500">
+                      Amount: ₹{Number(amount).toLocaleString()}
+                    </p>
+                  )}
+                  {date && (
+                    <p className="text-sm text-[var(--text-muted)]">
+                      Date: {new Date(date).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
-                
+
                 {!title || !amount || !date ? (
                   <p className="text-amber-500 text-sm text-center py-4">
                     Complete all fields to see full preview
@@ -377,27 +537,68 @@ export default function ConvenienceChargePage() {
               <label className="text-sm font-medium mb-2 block text-[var(--text-primary)]">
                 Select Employee to View Charges
               </label>
-              <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)] max-w-md">
-                <UserCheck className="w-5 h-5 text-[var(--text-muted)]" />
-                <select
-                  value={selectedEmployee}
-                  onChange={(e) => setSelectedEmployee(e.target.value)}
-                  className="w-full bg-transparent outline-none text-[var(--text-primary)]"
-                >
-                  <option value="">-- Choose Employee --</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName} ({emp.personNo}) - {emp.department}
-                    </option>
-                  ))}
-                </select>
+
+              {/* Search Input */}
+              <div className="relative max-w-md" ref={viewDropdownRef}>
+                <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)]">
+                  <Search className="w-5 h-5 text-[var(--text-muted)]" />
+                  <input
+                    type="text"
+                    value={viewSearch}
+                    onChange={(e) => {
+                      setViewSearch(e.target.value);
+                      setSelectedEmployee("");
+                      setViewDropdown(true);
+                    }}
+                    onFocus={() => setViewDropdown(true)}
+                    placeholder="Search by name, ID, department, or email..."
+                    className="w-full bg-transparent outline-none text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                  />
+                </div>
+
+                {/* Dropdown List */}
+                {viewDropdown && (
+                  <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto border border-[var(--border-color)] rounded-lg bg-[var(--card-bg)] shadow-lg">
+                    {filteredViewEmployees.length > 0 ? (
+                      filteredViewEmployees.map((emp) => (
+                        <button
+                          key={emp.id}
+                          type="button"
+                          onClick={() => handleSelectViewEmployee(emp.id)}
+                          className="w-full text-left px-4 py-3 hover:bg-[var(--hover-bg)] transition-colors border-b border-[var(--border-color)] last:border-b-0"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-semibold">
+                              {emp.firstName[0]}
+                              {emp.lastName[0]}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-[var(--text-primary)]">
+                                {emp.firstName} {emp.lastName}
+                              </p>
+                              <p className="text-xs text-[var(--text-muted)]">
+                                {emp.personNo} • {emp.department}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-4 py-3 text-sm text-[var(--text-muted)] text-center">
+                        No employees found matching "{viewSearch}"
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Charges Table */}
             {selectedEmployee ? (
               chargesLoading ? (
-                <p className="text-center py-8 text-[var(--text-muted)]">Loading charges...</p>
+                <p className="text-center py-8 text-[var(--text-muted)]">
+                  Loading charges...
+                </p>
               ) : existingCharges.length > 0 ? (
                 <div className="overflow-x-auto border border-[var(--border-color)] rounded-xl">
                   <table className="min-w-full text-sm text-[var(--text-primary)]">

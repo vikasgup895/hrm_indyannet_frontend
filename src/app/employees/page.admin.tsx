@@ -1509,7 +1509,11 @@ export default function EmployeesAdminPage() {
                                 {employee.documents.map((doc) => (
                                   <li key={doc.id}>
                                     <a
-                                      href={`http://localhost:4000/${doc.storageUrl}`}
+                                      href={`${
+                                        process.env.NODE_ENV === "production"
+                                          ? "https://hrm.indyanet.com"
+                                          : "http://localhost:4000"
+                                      }${doc.storageUrl}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-blue-600 hover:underline"

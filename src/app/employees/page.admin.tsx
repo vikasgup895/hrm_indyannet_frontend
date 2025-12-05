@@ -1511,8 +1511,8 @@ export default function EmployeesAdminPage() {
                                     <a
                                       href={`${
                                         process.env.NODE_ENV === "production"
-                                          ? "https://hrm.indyanet.com"
-                                          : "http://localhost:4000"
+                                          ? "https://hrm.indyanet.com/"
+                                          : "http://localhost:4000/"
                                       }${doc.storageUrl}`}
                                       target="_blank"
                                       rel="noopener noreferrer"

@@ -510,8 +510,8 @@ export default function EmployeesEmployeePage() {
                       <FileText className="text-indigo-500 w-5 h-5" />
                       <a
                         href={`${process.env.NODE_ENV === "production"
-                            ? "https://hrm.indyanet.com"
-                            : "http://localhost:4000"
+                            ? "https://hrm.indyanet.com/"
+                            : "http://localhost:4000/"
                           }${doc.storageUrl}`}
                         target="_blank"
                         className="text-[var(--text-primary)] hover:underline"

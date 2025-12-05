@@ -256,15 +256,15 @@ export default function EmployeesEmployeePage() {
   };
 
 
-// ------------fileupload -----------
+  // ------------fileupload -----------
   const handleFileUpload = async (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
-  
+
     try {
       const formData = new FormData();
       formData.append("file", file);
-  
+
       const res = await api.post(
         `/employees/${profile!.id}/upload`,
         formData,
@@ -275,12 +275,12 @@ export default function EmployeesEmployeePage() {
           },
         }
       );
-  
+
       // refresh profile
       const updated = await api.get("/employees/profile/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       setProfile(updated.data);
       alert("Document uploaded successfully!");
     } catch (err: any) {
@@ -288,7 +288,7 @@ export default function EmployeesEmployeePage() {
       alert("Failed to upload document");
     }
   };
-  
+
 
   /* ----------------------------------------------
      SAVE PROFILE
@@ -386,8 +386,8 @@ export default function EmployeesEmployeePage() {
             <div className="flex flex-col items-end gap-4">
               <span
                 className={`px-4 py-2 rounded-full text-sm font-medium ${profile!.status === "Active"
-                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                    : "bg-rose-100 text-rose-800 border border-rose-200"
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                  : "bg-rose-100 text-rose-800 border border-rose-200"
                   }`}
               >
                 {profile!.status}
@@ -480,54 +480,57 @@ export default function EmployeesEmployeePage() {
         {/* =============================================================
     DOCUMENTS SECTION
 ============================================================== */}
-<SectionCard icon={FileText} title="Uploaded Documents">
-  <div className="space-y-4">
+        <SectionCard icon={FileText} title="Uploaded Documents">
+          <div className="space-y-4">
 
-    {/* Upload Button */}
-    <div className="flex items-center justify-between">
-      <h4 className="text-[var(--text-primary)] font-medium">Your Documents</h4>
+            {/* Upload Button */}
+            <div className="flex items-center justify-between">
+              <h4 className="text-[var(--text-primary)] font-medium">Your Documents</h4>
 
-      <label className="px-5 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
-        Upload Document
-        <input
-          type="file"
-          className="hidden"
-          onChange={handleFileUpload}
-          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-        />
-      </label>
-    </div>
-
-    {/* Documents List */}
-    {profile?.documents?.length ? (
-      <ul className="space-y-3">
-        {profile.documents.map((doc) => (
-          <li
-            key={doc.id}
-            className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]"
-          >
-            <div className="flex items-center gap-3">
-              <FileText className="text-indigo-500 w-5 h-5" />
-              <a
-                href={`http://localhost:4000/${doc.storageUrl}`}
-                target="_blank"
-                className="text-[var(--text-primary)] hover:underline"
-              >
-                {doc.title}
-              </a>
+              <label className="px-5 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
+                Upload Document
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                />
+              </label>
             </div>
 
-            <span className="text-xs text-[var(--text-muted)]">
-              {new Date(doc.createdAt).toLocaleDateString("en-IN")}
-            </span>
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <p className="text-sm text-[var(--text-muted)]">No documents uploaded yet.</p>
-    )}
-  </div>
-</SectionCard>
+            {/* Documents List */}
+            {profile?.documents?.length ? (
+              <ul className="space-y-3">
+                {profile.documents.map((doc) => (
+                  <li
+                    key={doc.id}
+                    className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="text-indigo-500 w-5 h-5" />
+                      <a
+                        href={`${process.env.NODE_ENV === "production"
+                            ? "https://hrm.indyanet.com"
+                            : "http://localhost:4000"
+                          }${doc.storageUrl}`}
+                        target="_blank"
+                        className="text-[var(--text-primary)] hover:underline"
+                      >
+                        {doc.title}
+                      </a>
+                    </div>
+
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {new Date(doc.createdAt).toLocaleDateString("en-IN")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-[var(--text-muted)]">No documents uploaded yet.</p>
+            )}
+          </div>
+        </SectionCard>
 
 
         {/* =====================================================================

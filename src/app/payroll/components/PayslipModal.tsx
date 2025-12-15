@@ -25,6 +25,8 @@ export default function PayslipModal({
   const [activeTab, setActiveTab] = useState<"overview" | "detailed">(
     "overview"
   );
+  // if (process.env.NODE_ENV === "development")
+  //     console.log(data);
   const slipRef = useRef<HTMLDivElement>(null);
 
   const safe = (n: any) => (isNaN(Number(n)) ? 0 : Number(n));

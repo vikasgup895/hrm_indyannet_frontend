@@ -24,21 +24,37 @@ export default function PayrollAdminPage() {
     if (payrolls.length > 0) return; // prevent double StrictMode fetch
 
     const fetchData = async () => {
+      // if (process.env.NODE_ENV === "development")
+      //   console.log("📡 Fetching /payroll/payslips");
+
       const res = await api.get("/payroll/payslips", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      // if (process.env.NODE_ENV === "development")
+      //   console.log("✅ API returned:", res.data);
       const data = res.data || [];
       setPayrolls(data);
 
       if (data.length > 0) {
         const latest = data[0];
+        // if (process.env.NODE_ENV === "development")
+        //   console.log("🧾 latest payslip payload:", latest);
+
         const rawPeriodEnd = latest.payrollRun?.periodEnd;
+        // if (process.env.NODE_ENV === "development")
+        //   console.log("📅 Raw periodEnd:", rawPeriodEnd);
+
         const parsed = new Date(rawPeriodEnd);
+        // if (process.env.NODE_ENV === "development")
+        //   console.log("📅 parsed Date:", parsed);
+
         const nice = parsed.toLocaleString("default", {
           month: "long",
           year: "numeric",
         });
+        // if (process.env.NODE_ENV === "development")
+        //   console.log("✅ formatted payroll month:", nice);
 
         setSummary({
           currentMonth: nice,

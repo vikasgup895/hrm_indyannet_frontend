@@ -32,6 +32,13 @@ api.interceptors.request.use(
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        if (process.env.NODE_ENV === "development") {
+          console.log(`🔑 [API] Token attached → ${config.url}`);
+        }
+      } else {
+        if (process.env.NODE_ENV === "development") {
+          console.warn(`⚠️ [API] No token found for ${config.url}`);
+        }
       }
     }
 
@@ -53,6 +60,8 @@ api.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401 && typeof window !== "undefined") {
+      console.warn("🔒 [API] 401 Unauthorized — clearing token");
+
       localStorage.removeItem("authToken");
       localStorage.removeItem("token");
       localStorage.removeItem("role");
@@ -64,6 +73,15 @@ api.interceptors.response.use(
       }, 300);
     }
 
+    if (process.env.NODE_ENV === "development") {
+      console.error("❗ [API] Response Error:", {
+        url: error.config?.url,
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data,
+      });
+    }
+
     return Promise.reject(error);
   }
 );
@@ -71,4 +89,6 @@ api.interceptors.response.use(
 /**
  * 🚀 Startup Log
  */
-// API initialized
+if (process.env.NODE_ENV === "development") {
+  console.log(`[API] Connected to backend → ${baseURL}`);
+}

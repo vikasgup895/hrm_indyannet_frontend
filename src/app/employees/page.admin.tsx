@@ -762,6 +762,7 @@ export default function EmployeesAdminPage() {
         const res = await api.get("/employees", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        // console.log("Fetched employees:", res.data);
         setEmployees(res.data);
       } catch (err) {
         console.error("Failed to fetch employees:", err);

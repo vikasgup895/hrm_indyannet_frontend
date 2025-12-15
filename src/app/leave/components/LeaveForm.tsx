@@ -59,7 +59,11 @@ const Input = ({ className = "", error = false, ...props }: any) => (
   <input
     className={`w-full px-4 py-3 rounded-xl bg-[var(--card-bg)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border transition-all duration-200
     focus:outline-none focus:ring-2 focus:ring-blue-500
-    ${error ? "border-red-500 focus:ring-red-500/40" : "border-[var(--border-color)] hover:border-blue-400/40"}
+    ${
+      error
+        ? "border-red-500 focus:ring-red-500/40"
+        : "border-[var(--border-color)] hover:border-blue-400/40"
+    }
     ${className}`}
     {...props}
   />
@@ -70,7 +74,11 @@ const Select = ({ children, className = "", error = false, ...props }: any) => (
   <select
     className={`w-full px-4 py-3 rounded-xl bg-[var(--card-bg)] text-[var(--text-primary)] border transition-all duration-200
     focus:outline-none focus:ring-2 focus:ring-blue-500
-    ${error ? "border-red-500 focus:ring-red-500/40" : "border-[var(--border-color)] hover:border-blue-400/40"}
+    ${
+      error
+        ? "border-red-500 focus:ring-red-500/40"
+        : "border-[var(--border-color)] hover:border-blue-400/40"
+    }
     ${className}`}
     {...props}
   >
@@ -83,7 +91,11 @@ const Textarea = ({ className = "", error = false, ...props }: any) => (
   <textarea
     className={`w-full px-4 py-3 rounded-xl bg-[var(--card-bg)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border resize-none transition-all duration-200
     focus:outline-none focus:ring-2 focus:ring-blue-500
-    ${error ? "border-red-500 focus:ring-red-500/40" : "border-[var(--border-color)] hover:border-blue-400/40"}
+    ${
+      error
+        ? "border-red-500 focus:ring-red-500/40"
+        : "border-[var(--border-color)] hover:border-blue-400/40"
+    }
     ${className}`}
     {...props}
   />
@@ -159,7 +171,9 @@ export default function LeaveForm({
       setForm({ policyId: "", startDate: "", endDate: "", reason: "" });
       setErrors({});
     } catch (err) {
-      console.error("Failed to submit leave:", err);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to submit leave:", err);
+      }
     } finally {
       setSubmitting(false);
     }

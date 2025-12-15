@@ -38,15 +38,11 @@ export default function ProfilePage() {
         const response = await api.get("/employees/profile/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (process.env.NODE_ENV === "development")
-          console.log("Fetched profile:", response.data);
         setProfile(response.data);
       } catch (error: any) {
         console.error("Failed to fetch profile:", error);
         if (error.response?.status === 404) {
-          if (process.env.NODE_ENV === "development")
-            console.log(error.response);
-          setError("Admin profile not found. Please contact support.");
+          setError("Admin profile not found. Please contact support");
         } else if (error.response?.status === 401) {
           setError("Session expired. Please login again.");
         } else {

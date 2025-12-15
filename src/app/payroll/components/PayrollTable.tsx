@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -73,9 +72,7 @@ export default function PayrollTable({
   const [selected, setSelected] = useState<any>(null);
 
   /* 🔥 Log the full payroll dataset once */
-  useEffect(() => {
-    // console.log("📌 PayrollTable Loaded — Payroll Data:", data);
-  }, [data]);
+  useEffect(() => {}, [data]);
 
   const formatSalary = (amount: string | number) => {
     const numAmount =
@@ -99,20 +96,15 @@ export default function PayrollTable({
           </h3>
           <p className="text-sm text-[var(--text-muted)] mt-1">
             {data.length} employee{data.length !== 1 ? "s" : ""} •{" "}
-            {
-              data.filter((r) => r?.status === "APPROVED")
-                .length
-            }{" "}
-            processed this month
+            {data.filter((r) => r?.status === "APPROVED").length} processed this
+            month
           </p>
         </div>
 
         {/* TABLE */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              {/* Columns */}
-            </thead>
+            <thead>{/* Columns */}</thead>
 
             <tbody className="divide-y divide-[var(--border-color)]">
               {data.length > 0 ? (
@@ -138,9 +130,8 @@ export default function PayrollTable({
                               {row.employee.firstName} {row.employee.lastName}
                             </p>
                             <p className="text-xs text-[var(--text-muted)]">
-  ID: {row.employee?.personNo || "—"}
-</p>
-
+                              ID: {row.employee?.personNo || "—"}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -160,26 +151,26 @@ export default function PayrollTable({
                       {/* Period */}
                       <td className="px-6 py-4 text-[var(--text-primary)]">
                         {row.payrollRun?.periodEnd
-                          ? new Date(
-                              row.payrollRun.periodEnd
-                            ).toLocaleString("default", {
-                              month: "long",
-                              year: "numeric",
-                            })
+                          ? new Date(row.payrollRun.periodEnd).toLocaleString(
+                              "default",
+                              {
+                                month: "long",
+                                year: "numeric",
+                              }
+                            )
                           : "—"}
                       </td>
 
                       {/* Status */}
                       <td className="px-6 py-4">
-<StatusBadge status={row.status} />
-</td>
+                        <StatusBadge status={row.status} />
+                      </td>
 
                       {/* Actions */}
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <ActionButton
                             onClick={() => {
-                              console.log("📄 Opening Payslip Modal:", row);
                               setSelected(row);
                             }}
                             variant={

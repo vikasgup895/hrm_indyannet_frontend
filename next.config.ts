@@ -7,6 +7,13 @@ const nextConfig = {
     unoptimized: true,
   },
   reactStrictMode: true,
+  // Strip console.* from production builds (keep warn/error)
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? { exclude: ["error", "warn"] }
+        : false,
+  },
 };
 
 module.exports = nextConfig;

@@ -583,6 +583,7 @@ import { useAuth } from "@/store/auth";
 import { useTheme } from "@/context/ThemeProvider";
 import React from "react";
 import { get } from "http";
+import EmployeeDetailsModal from "./components/EmployeeDetailsModal";
 
 /* -------------------------------------------
    Employee Type (extended with new fields)
@@ -718,6 +719,10 @@ export default function EmployeesAdminPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [openRow, setOpenRow] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
+  const [detailsEmployee, setDetailsEmployee] = React.useState<Employee | null>(
+    null
+  );
   // Filter tabs: default to Active per requirement
   const [activeTab, setActiveTab] = useState("active");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -1374,7 +1379,13 @@ export default function EmployeesAdminPage() {
                             {employee.lastName[0]}
                           </div>
                           <div>
-                            <p className="font-semibold">
+                            <p
+                              className="font-semibold cursor-pointer"
+                              onClick={() => {
+                                setDetailsEmployee(employee);
+                                setDetailsOpen(true);
+                              }}
+                            >
                               {employee.firstName} {employee.lastName}
                             </p>
                             <p className="text-sm text-[var(--text-muted)]">
@@ -1538,6 +1549,13 @@ export default function EmployeesAdminPage() {
             </table>
           </div>
         </div>
+        {detailsOpen && (
+          <EmployeeDetailsModal
+            open={detailsOpen}
+            onClose={() => setDetailsOpen(false)}
+            employee={detailsEmployee}
+          />
+        )}
       </div>
     </div>
   );

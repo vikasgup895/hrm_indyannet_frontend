@@ -138,7 +138,7 @@ export default function ProfilePage() {
   // Main Profile Display
   // ────────────────
   return (
-    <div className="min-h-screen p-6 bg-[var(--background)] text-[var(--text-primary)] transition-colors duration-300">
+    <div className="min-h-screen p-1 bg-[var(--background)] text-[var(--text-primary)] transition-colors duration-300">
       <div className="space-y-6 max-w-3xl mx-auto">
         {/* Header */}
         <h1 className="text-2xl font-semibold flex items-center gap-2">

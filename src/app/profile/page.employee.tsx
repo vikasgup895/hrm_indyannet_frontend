@@ -342,7 +342,7 @@ export default function EmployeesEmployeePage() {
   if (error) return <div className="p-20 text-red-600">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] py-8 px-4">
+    <div className="min-h-screen bg-[var(--background)] py-1 px-2">
       <div className="max-w-7xl mx-auto space-y-8">
 
         {/* -------------------------------------------------------------

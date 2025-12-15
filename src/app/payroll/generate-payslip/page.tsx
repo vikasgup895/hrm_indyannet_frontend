@@ -153,13 +153,12 @@ export default function PayslipPage() {
   const [earnings, setEarnings] = useState({
     basic: 0,
     hra: 0,
-    conveyance: 0,
-    medical: 0,
+    conveyance: 0, // Special Allowance
     bonus: 0,
     other: 0,
   });
   const [deductions, setDeductions] = useState({
-    epf: 0,
+    leaveDeduction: 0,
     professionalTax: 0,
     other: 0,
   });
@@ -168,12 +167,11 @@ export default function PayslipPage() {
     basic: "",
     hra: "",
     conveyance: "",
-    medical: "",
     bonus: "",
     other: "",
   });
   const [deductionsInput, setDeductionsInput] = useState({
-    epf: "",
+    leaveDeduction: "",
     professionalTax: "",
     other: "",
   });
@@ -241,13 +239,13 @@ export default function PayslipPage() {
       earnings.basic +
       earnings.hra +
       earnings.conveyance +
-      earnings.medical +
       earnings.bonus +
       earnings.other,
     [earnings]
   );
   const totalDeductions = useMemo(
-    () => deductions.epf + deductions.professionalTax + deductions.other,
+    () =>
+      deductions.leaveDeduction + deductions.professionalTax + deductions.other,
     [deductions]
   );
   const netPay = useMemo(
@@ -325,10 +323,9 @@ export default function PayslipPage() {
         basic: earnings.basic,
         hra: earnings.hra,
         conveyance: earnings.conveyance,
-        medical: earnings.medical,
         bonus: earnings.bonus,
         other: earnings.other,
-        epf: deductions.epf,
+        leaveDeduction: deductions.leaveDeduction,
         professionalTax: deductions.professionalTax,
         otherDeduction: deductions.other,
       };
@@ -417,18 +414,16 @@ export default function PayslipPage() {
       email: emp.workEmail ?? "—",
       payPeriod: monthLabel(month),
       payDate: new Date().toLocaleDateString("en-GB"),
-      pfNumber: emp.bankDetail?.pfNumber ?? "—",
-      uan: emp.bankDetail?.uan ?? "—",
+      // PF and UAN intentionally hidden/commented for future use
       earnings: {
         Basic: earnings.basic,
         HRA: earnings.hra,
-        "Conveyance Allowance": earnings.conveyance,
-        Medical: earnings.medical,
+        "Special Allowance": earnings.conveyance,
         Bonus: earnings.bonus,
         Other: earnings.other,
       },
       deductions: {
-        "EPF Contribution": deductions.epf,
+        "Leave Deduction": deductions.leaveDeduction,
         "Professional Tax": deductions.professionalTax,
         Other: deductions.other,
       },
@@ -511,8 +506,7 @@ export default function PayslipPage() {
                   [
                     ["basic", "Basic"],
                     ["hra", "HRA"],
-                    ["conveyance", "Conveyance Allowance"],
-                    ["medical", "Medical"],
+                    ["conveyance", "Special Allowance"],
                     ["bonus", "Bonus"],
                     ["other", "Other"],
                   ] as const
@@ -536,7 +530,7 @@ export default function PayslipPage() {
               <div className="grid grid-cols-2 gap-3">
                 {(
                   [
-                    ["epf", "EPF Contribution"],
+                    ["leaveDeduction", "Leave Deduction"],
                     ["professionalTax", "Professional Tax"],
                     ["other", "Other"],
                   ] as const
@@ -609,10 +603,12 @@ export default function PayslipPage() {
                 {/* Center: Company Details */}
                 <div className="text-center flex-1 px-4">
                   <h1 className="text-2xl font-bold text-gray-900">Indyanet</h1>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Madilu retail Private limited
+                  </h3>
 
                   <p className="text-sm text-gray-600 leading-tight mt-1">
-                    Hustlehub Tech Park, 208, 27th Main Rd, ITI Layout, Sector
-                    2,
+                    No.591, 14th Main Road, 15th Cross Rd, 4th Sector,
                     <br />
                     HSR Layout, Bengaluru, Karnataka 560102, India
                   </p>
@@ -656,11 +652,11 @@ export default function PayslipPage() {
                 label="Pay Date"
                 value={new Date().toLocaleDateString("en-GB")}
               />
-              <Field
+              {/* <Field
                 label="PF A/C Number"
                 value={emp?.bankDetail?.pfNumber ?? "—"}
-              />
-              <Field label="UAN" value={emp?.bankDetail?.uan ?? "—"} />
+              /> */}
+              {/* <Field label="UAN" value={emp?.bankDetail?.uan ?? "—"} /> */}
             </div>
 
             {/* Earnings & Deductions */}
@@ -675,17 +671,16 @@ export default function PayslipPage() {
                 <div className="border-r border-gray-200">
                   <Row label="Basic" amount={earnings.basic} />
                   <Row label="HRA" amount={earnings.hra} />
-                  <Row
-                    label="Conveyance Allowance"
-                    amount={earnings.conveyance}
-                  />
-                  <Row label="Medical" amount={earnings.medical} />
+                  <Row label="Special Allowance" amount={earnings.conveyance} />
                   <Row label="Bonus" amount={earnings.bonus} />
                   <Row label="Other" amount={earnings.other} />
                   <Row label="Gross Earnings" amount={grossEarnings} bold />
                 </div>
                 <div>
-                  <Row label="EPF Contribution" amount={deductions.epf} />
+                  <Row
+                    label="Leave Deduction"
+                    amount={deductions.leaveDeduction}
+                  />
                   <Row
                     label="Professional Tax"
                     amount={deductions.professionalTax}

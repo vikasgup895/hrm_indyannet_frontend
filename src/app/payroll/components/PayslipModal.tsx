@@ -25,7 +25,7 @@ export default function PayslipModal({
   const [activeTab, setActiveTab] = useState<"overview" | "detailed">(
     "overview"
   );
-  console.log(data)
+  console.log(data);
   const slipRef = useRef<HTMLDivElement>(null);
 
   const safe = (n: any) => (isNaN(Number(n)) ? 0 : Number(n));
@@ -33,10 +33,22 @@ export default function PayslipModal({
   const deductions = safe(data.deductions);
   const net = safe(data.net);
   // Debug: payslip data logging removed for production
-  const month = new Date(data.payrollRun?.periodEnd).toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
+  // Month/year helpers
+  const periodStartDate = data.payrollRun?.periodStart
+    ? new Date(data.payrollRun.periodStart)
+    : null;
+  const periodEndDate = data.payrollRun?.periodEnd
+    ? new Date(data.payrollRun.periodEnd)
+    : null;
+  const monthOnly = periodEndDate
+    ? periodEndDate.toLocaleString("default", { month: "short" })
+    : "";
+  const monthYear = periodEndDate
+    ? periodEndDate.toLocaleString("default", {
+        month: "long",
+        year: "numeric",
+      })
+    : "";
 
   const formatINR = (n: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -50,37 +62,45 @@ export default function PayslipModal({
     if (!data) return alert("No payslip data found.");
 
     downloadPayslipPDF(null, {
+      // Prefer Employee Number (EMP...) so filename uses EMP instead of name
       personNo: data.employee?.personNo || "N/A",
       employeeId: data.employeeId,
       employee: data.employee || {},
       payrollRun: data.payrollRun || {},
       email: data.employee?.workEmail || data.employee?.personalEmail || "N/A",
-      payPeriod: `${data.payrollRun?.periodStart?.slice(
-        0,
-        10
-      )} - ${data.payrollRun?.periodEnd?.slice(0, 10)}`,
-      payDate: data.payrollRun?.payDate,
-      pfNumber: data.employee?.bankDetail?.pfNumber,
-      uan: data.employee?.bankDetail?.uan,
+      // Pay period shown as `1 Nov to 30 Nov`
+      payPeriod: (() => {
+        if (!data.payrollRun?.periodStart || !data.payrollRun?.periodEnd)
+          return "—";
+        const s = new Date(data.payrollRun.periodStart);
+        const e = new Date(data.payrollRun.periodEnd);
+        const fmt = (d: Date) =>
+          `${d.getDate()} ${d.toLocaleString("default", { month: "short" })}`;
+        return `${fmt(s)} to ${fmt(e)}`;
+      })(),
+      // Show date of payslip generation
+      payDate: new Date().toISOString(),
+      // PF & UAN intentionally hidden/commented for future use
+      // pfNumber: data.employee?.bankDetail?.pfNumber,
+      // uan: data.employee?.bankDetail?.uan,
 
-      earnings: data.earnings || {
+      earnings: {
         Basic: data.basic || 0,
         HRA: data.hra || 0,
-        "Conveyance Allowance": data.conveyance || 0,
-        Medical: data.medical || 0,
+        "Special Allowance": data.conveyance || 0,
         Bonus: data.bonus || 0,
         Other: data.otherEarnings || 0,
       },
 
       deductions: {
-        "EPF Contribution": data.epf || 0,
+        "Leave Deduction": data.leaveDeduction || 0,
         "Professional Tax": data.professionalTax || 0,
         Other: data.otherDeductions || 0,
       },
 
       gross: data.gross,
       totalDeductions:
-        (data.epf || 0) +
+        (data.leaveDeduction || 0) +
         (data.professionalTax || 0) +
         (data.otherDeductions || 0),
       net: data.net,
@@ -99,7 +119,7 @@ export default function PayslipModal({
             </div>
             <div>
               <h2 className="text-xl font-bold">Payslip</h2>
-              <p className="text-sm text-[var(--text-muted)]">{month}</p>
+              <p className="text-sm text-[var(--text-muted)]">{monthYear}</p>
             </div>
           </div>
           <button
@@ -150,7 +170,7 @@ export default function PayslipModal({
                   label="Department"
                   value={data.employee.department ?? "—"}
                 />
-                <Box icon={Calendar} label="Month" value={month} />
+                <Box icon={Calendar} label="Month" value={monthYear} />
                 <Box
                   icon={CreditCard}
                   label="Status"
@@ -182,17 +202,21 @@ export default function PayslipModal({
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">
-                      Indyanet HRM
+                      Indyanet{" "}
                     </h2>
+                    <p className="text-sm text-gray-700">
+                      Madilu retail Private limited
+                    </p>
                     <p className="text-sm text-gray-600">
-                      Bengaluru, Karnataka, India
+                      No.591, 14th Main Road, 15th Cross Rd, 4th Sector, HSR
+                      Layout, Bengaluru, Karnataka 560102
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Payslip for the Month</p>
-                  <p className="font-semibold text-gray-900">{month}</p>
+                  <p className="font-semibold text-gray-900">{monthOnly}</p>
                 </div>
               </div>
 
@@ -220,19 +244,38 @@ export default function PayslipModal({
                   <p className="font-semibold text-gray-700">Bank A/C</p>
                   <p>{data.employee?.bankDetail?.accountNumber || "—"}</p>
                 </div>
+                {/* PF A/C Number and UAN hidden/commented for future */}
+                {/*
                 <div>
-                  <p className="font-semibold text-gray-700">PF Number</p>
+                  <p className="font-semibold text-gray-700">PF A/C Number</p>
                   <p>{data.employee?.bankDetail?.pfNumber || "—"}</p>
                 </div>
                 <div>
                   <p className="font-semibold text-gray-700">UAN</p>
                   <p>{data.employee?.bankDetail?.uan || "—"}</p>
                 </div>
+                */}
                 <div>
                   <p className="font-semibold text-gray-700">Pay Period</p>
                   <p>
-                    {data.payrollRun?.periodStart?.slice(0, 10)} -{" "}
-                    {data.payrollRun?.periodEnd?.slice(0, 10)}
+                    {(() => {
+                      if (!periodStartDate || !periodEndDate) return "—";
+                      const fmt = (d: Date) =>
+                        `${d.getDate()} ${d.toLocaleString("default", {
+                          month: "short",
+                        })}`;
+                      return `${fmt(periodStartDate)} to ${fmt(periodEndDate)}`;
+                    })()}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Pay Date</p>
+                  <p>
+                    {new Date().toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </p>
                 </div>
               </div>
@@ -245,18 +288,30 @@ export default function PayslipModal({
                     <Calculator className="w-4 h-4" /> Earnings
                   </h3>
                   <div className="space-y-2 border border-gray-200 rounded-lg p-3">
-                    {Object.entries(
-                      data.earnings || {
+                    {(() => {
+                      const base = data.earnings || {
                         Basic: data.basic || 0,
                         HRA: data.hra || 0,
                         "Conveyance Allowance": data.conveyance || 0,
-                        Medical: data.medical || 0,
                         Bonus: data.bonus || 0,
                         Other: data.other || 0,
-                      }
-                    ).map(([key, val]) => (
-                      <Row key={key} label={key} value={val as number} />
-                    ))}
+                      };
+                      return Object.entries(base)
+                        .filter(([label]) => label !== "Medical")
+                        .map(([label, val]) => [
+                          label === "Conveyance Allowance"
+                            ? "Special Allowance"
+                            : label,
+                          val,
+                        ])
+                        .map(([key, val]) => (
+                          <Row
+                            key={key as string}
+                            label={key as string}
+                            value={val as number}
+                          />
+                        ));
+                    })()}
                     <Row label="Total Earnings" value={gross} />
                   </div>
                 </div>
@@ -268,7 +323,7 @@ export default function PayslipModal({
                   </h3>
                   <div className="space-y-2 border border-gray-200 rounded-lg p-3">
                     {Object.entries({
-                      "EPF Contribution": data.epf || 0,
+                      "Leave Deduction": data.leaveDeduction || 0,
                       "Professional Tax": data.professionalTax || 0,
                       Other: data.otherDeduction || 0,
                     }).map(([key, val]) => (

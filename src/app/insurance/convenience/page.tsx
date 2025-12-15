@@ -1,18 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import {
-  UserCheck,
-  User,
-  Calendar,
-  Coins,
-  FileText,
-  Plus,
-  Trash2,
-  Edit,
-  Search,
-} from "lucide-react";
+import { Coins, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { useAuth } from "@/store/auth";
 
 // Define TypeScript interfaces
@@ -20,11 +10,8 @@ interface Employee {
   id: string;
   firstName: string;
   lastName: string;
-  personNo: string;
-  workEmail: string;
   department: string;
-  // Only show employees with Active status in search/select lists
-  status?: string;
+  designation?: string;
 }
 
 interface ConvenienceCharge {
@@ -33,638 +20,566 @@ interface ConvenienceCharge {
   title: string;
   amount: number;
   date: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
   updatedAt: string;
-  employee?: {
-    id: string;
-    firstName: string;
-    lastName: string;
+  approvalDate?: string;
+  rejectionReason?: string;
+  approvedBy?: string;
+  employee?: Employee;
+}
+
+interface GroupedCharges {
+  [employeeId: string]: {
+    employee: Employee;
+    charges: ConvenienceCharge[];
+    totalAmount: number;
   };
 }
 
-export default function ConvenienceChargePage() {
+export default function ConvenienceChargeApprovalsPage() {
   const { token } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [selectedEmployee, setSelectedEmployee] = useState("");
-
-  // Separate states for Assign and View tabs
-  const [assignSearch, setAssignSearch] = useState("");
-  const [viewSearch, setViewSearch] = useState("");
-  const [assignDropdown, setAssignDropdown] = useState(false);
-  const [viewDropdown, setViewDropdown] = useState(false);
-
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState("");
-  const [existingCharges, setExistingCharges] = useState<ConvenienceCharge[]>(
+  const [pendingCharges, setPendingCharges] = useState<ConvenienceCharge[]>([]);
+  const [processedCharges, setProcessedCharges] = useState<ConvenienceCharge[]>(
     []
+  ); // APPROVED + REJECTED
+  const [selectedCharges, setSelectedCharges] = useState<Set<string>>(
+    new Set()
   );
-  const [editingCharge, setEditingCharge] = useState<ConvenienceCharge | null>(
-    null
-  );
-
+  const [selectedEmployeeFilter, setSelectedEmployeeFilter] =
+    useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [chargesLoading, setChargesLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"assign" | "view">("assign");
+  const [processing, setProcessing] = useState(false);
+  const [rejectionReasons, setRejectionReasons] = useState<
+    Record<string, string>
+  >({});
+  const [activeTab, setActiveTab] = useState<"pending" | "processed">(
+    "pending"
+  );
 
-  // Refs for click outside detection
-  const assignDropdownRef = useRef<HTMLDivElement>(null);
-  const viewDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Load employees
+  // Load all charges
   useEffect(() => {
-    const loadEmployees = async () => {
+    const loadCharges = async () => {
+      if (!token) return;
+
       try {
-        const res = await api.get("/employees", {
+        setLoading(true);
+
+        // Fetch PENDING charges
+        const pendingRes = await api.get("/convenience/pending/all", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        // Keep only active employees in lists
-        const onlyActive = (res.data || []).filter(
-          (e: Employee) => (e.status || "").toLowerCase() === "active"
-        );
-        setEmployees(onlyActive);
-      } catch (err) {
-        console.error("Failed to load employees", err);
-        alert("❌ Failed to load employees");
+
+        // Fetch APPROVED charges
+        const approvedRes = await api.get("/convenience/status/APPROVED", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Fetch REJECTED charges
+        const rejectedRes = await api.get("/convenience/status/REJECTED", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setPendingCharges(pendingRes.data || []);
+        setProcessedCharges([
+          ...(approvedRes.data || []),
+          ...(rejectedRes.data || []),
+        ]);
+      } catch (err: any) {
+        console.error("Failed to load charges:", err);
+        alert("❌ Failed to load charges");
       } finally {
         setLoading(false);
       }
     };
-    if (token) loadEmployees();
+
+    loadCharges();
   }, [token]);
 
-  // Click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      // Close assign dropdown if clicked outside
-      if (
-        assignDropdownRef.current &&
-        !assignDropdownRef.current.contains(e.target as Node)
-      ) {
-        setAssignDropdown(false);
-      }
-
-      // Close view dropdown if clicked outside
-      if (
-        viewDropdownRef.current &&
-        !viewDropdownRef.current.contains(e.target as Node)
-      ) {
-        setViewDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Load existing charges when employee is selected
-  useEffect(() => {
-    if (selectedEmployee) {
-      loadEmployeeCharges(selectedEmployee);
+  // Handle checkbox toggle
+  const toggleChargeSelection = (chargeId: string) => {
+    const newSelected = new Set(selectedCharges);
+    if (newSelected.has(chargeId)) {
+      newSelected.delete(chargeId);
     } else {
-      setExistingCharges([]);
+      newSelected.add(chargeId);
     }
-  }, [selectedEmployee, token]);
+    setSelectedCharges(newSelected);
+  };
 
-  const loadEmployeeCharges = async (employeeId: string) => {
-    setChargesLoading(true);
+  // Handle bulk action
+  const handleBulkAction = async (action: "APPROVED" | "REJECTED") => {
+    if (selectedCharges.size === 0) {
+      alert("Please select at least one charge");
+      return;
+    }
+
+    if (action === "REJECTED") {
+      // Validate rejection reasons for all selected charges
+      for (const chargeId of selectedCharges) {
+        if (!rejectionReasons[chargeId]?.trim()) {
+          alert(`Please provide rejection reason for charge ${chargeId}`);
+          return;
+        }
+      }
+    }
+
+    setProcessing(true);
     try {
-      const res = await api.get(`/convenience/${employeeId}`, {
+      const chargesData: Record<string, string> = {};
+      for (const chargeId of selectedCharges) {
+        chargesData[chargeId] = action;
+      }
+
+      const response = await api.put(
+        "/convenience/bulk/approve-reject",
+        {
+          charges: chargesData,
+          rejectionReasons:
+            action === "REJECTED" ? rejectionReasons : undefined,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert(
+        `✅ Bulk action completed!\n` +
+          `Processed: ${response.data.summary.processed}\n` +
+          `Failed: ${response.data.summary.failed}`
+      );
+
+      // Clear selection and refresh
+      setSelectedCharges(new Set());
+      setRejectionReasons({});
+
+      // Reload charges
+      const pendingRes = await api.get("/convenience/pending/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setExistingCharges(res.data);
-    } catch (err) {
-      console.error("Failed to load convenience charges", err);
-      // Don't show alert - employee might not have any charges yet
-    } finally {
-      setChargesLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!selectedEmployee) return alert("Please select an employee");
-    if (!title.trim()) return alert("Enter charge name");
-    if (!amount || Number(amount) <= 0) return alert("Enter valid amount");
-    if (!date) return alert("Select date");
-
-    setSubmitting(true);
-
-    try {
-      if (editingCharge) {
-        // Update existing charge
-        await api.put(
-          `/convenience/${editingCharge.id}`,
-          {
-            employeeId: selectedEmployee,
-            title,
-            amount: Number(amount),
-            date,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        alert("✅ Convenience charge updated successfully!");
-      } else {
-        // Create new charge
-        await api.post(
-          "/convenience",
-          {
-            employeeId: selectedEmployee,
-            title,
-            amount: Number(amount),
-            date,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        alert("✅ Convenience charge added successfully!");
-      }
-
-      // Reset form and refresh data
-      resetForm();
-      if (selectedEmployee) {
-        loadEmployeeCharges(selectedEmployee);
-      }
-    } catch (err: any) {
-      console.error("Save failed:", err);
-      const errorMessage =
-        err.response?.data?.message || "Error assigning convenience charge";
-      alert(`❌ ${errorMessage}`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (chargeId: string) => {
-    if (!confirm("Are you sure you want to delete this charge?")) return;
-
-    try {
-      await api.delete(`/convenience/${chargeId}`, {
+      const approvedRes = await api.get("/convenience/status/APPROVED", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert("✅ Convenience charge deleted successfully!");
-      if (selectedEmployee) {
-        loadEmployeeCharges(selectedEmployee);
-      }
+      const rejectedRes = await api.get("/convenience/status/REJECTED", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setPendingCharges(pendingRes.data || []);
+      setProcessedCharges([
+        ...(approvedRes.data || []),
+        ...(rejectedRes.data || []),
+      ]);
     } catch (err: any) {
-      console.error("Delete failed:", err);
-      const errorMessage =
-        err.response?.data?.message || "Error deleting charge";
-      alert(`❌ ${errorMessage}`);
+      console.error("Bulk action failed:", err);
+      alert(
+        "❌ Bulk action failed: " + (err.response?.data?.message || err.message)
+      );
+    } finally {
+      setProcessing(false);
     }
   };
 
-  const handleEdit = (charge: ConvenienceCharge) => {
-    setEditingCharge(charge);
-    setSelectedEmployee(charge.employeeId);
-    setTitle(charge.title);
-    setAmount(charge.amount.toString());
-    setDate(charge.date.split("T")[0]); // Format date for input
-    setActiveTab("assign");
+  // Group charges by employee
+  const groupChargesByEmployee = (
+    charges: ConvenienceCharge[]
+  ): GroupedCharges => {
+    const grouped: GroupedCharges = {};
+
+    charges.forEach((charge) => {
+      if (!grouped[charge.employeeId]) {
+        grouped[charge.employeeId] = {
+          employee: charge.employee || {
+            id: charge.employeeId,
+            firstName: "Unknown",
+            lastName: "Employee",
+            department: "—",
+          },
+          charges: [],
+          totalAmount: 0,
+        };
+      }
+      grouped[charge.employeeId].charges.push(charge);
+      grouped[charge.employeeId].totalAmount += charge.amount;
+    });
+
+    return grouped;
   };
 
-  const resetForm = () => {
-    setEditingCharge(null);
-    setTitle("");
-    setAmount("");
-    setDate("");
-    // Don't reset selectedEmployee to maintain context
-  };
+  const groupedPending = groupChargesByEmployee(pendingCharges);
+  const groupedProcessed = groupChargesByEmployee(processedCharges);
 
-  const getSelectedEmployeeName = () => {
-    const employee = employees.find((emp) => emp.id === selectedEmployee);
-    return employee ? `${employee.firstName} ${employee.lastName}` : "";
-  };
+  // Filter by selected employee
+  const filteredPending = selectedEmployeeFilter
+    ? groupedPending[selectedEmployeeFilter]
+      ? { [selectedEmployeeFilter]: groupedPending[selectedEmployeeFilter] }
+      : {}
+    : groupedPending;
 
-  // Filter employees for Assign tab
-  const filteredAssignEmployees = employees.filter((emp) => {
-    const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
-    const personNo = emp.personNo.toLowerCase();
-    const department = emp.department?.toLowerCase() || "";
-    const email = emp.workEmail?.toLowerCase() || "";
-    const query = assignSearch.toLowerCase();
+  const filteredProcessed = selectedEmployeeFilter
+    ? groupedProcessed[selectedEmployeeFilter]
+      ? { [selectedEmployeeFilter]: groupedProcessed[selectedEmployeeFilter] }
+      : {}
+    : groupedProcessed;
 
-    return (
-      fullName.includes(query) ||
-      personNo.includes(query) ||
-      department.includes(query) ||
-      email.includes(query)
-    );
-  });
+  // Get unique employees for filter
+  const allEmployees = Array.from(
+    new Map(
+      [...pendingCharges, ...processedCharges]
+        .filter((c) => c.employee)
+        .map((c) => [
+          c.employeeId,
+          {
+            id: c.employeeId,
+            name: `${c.employee?.firstName} ${c.employee?.lastName}`,
+          },
+        ])
+    ).values()
+  );
 
-  // Filter employees for View tab
-  const filteredViewEmployees = employees.filter((emp) => {
-    const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
-    const personNo = emp.personNo.toLowerCase();
-    const department = emp.department?.toLowerCase() || "";
-    const email = emp.workEmail?.toLowerCase() || "";
-    const query = viewSearch.toLowerCase();
-
-    return (
-      fullName.includes(query) ||
-      personNo.includes(query) ||
-      department.includes(query) ||
-      email.includes(query)
-    );
-  });
-
-  const handleSelectAssignEmployee = (empId: string) => {
-    setSelectedEmployee(empId);
-    setAssignDropdown(false);
-    const employee = employees.find((emp) => emp.id === empId);
-    if (employee) {
-      setAssignSearch(`${employee.firstName} ${employee.lastName}`);
-    }
-  };
-
-  const handleSelectViewEmployee = (empId: string) => {
-    setSelectedEmployee(empId);
-    setViewDropdown(false);
-    const employee = employees.find((emp) => emp.id === empId);
-    if (employee) {
-      setViewSearch(`${employee.firstName} ${employee.lastName}`);
-    }
-  };
-
-  if (loading) return <p className="p-6 text-center">Loading employees...</p>;
+  if (loading) {
+    return <p className="p-6 text-center">Loading charges...</p>;
+  }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-semibold flex items-center gap-2 text-[var(--text-primary)]">
-        <FileText className="text-purple-500" />
-        Convenience Charge Management
-      </h1>
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
+          <FileText className="text-purple-500" />
+          Convenience Charge Approvals
+        </h1>
+        <div className="text-sm text-[var(--text-muted)] space-y-1">
+          <span className="bg-yellow-100 dark:bg-yellow-500/30 px-3 py-1 rounded-full block text-center">
+            Pending: <strong>{pendingCharges.length}</strong>
+          </span>
+          <span className="bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-full block text-center">
+            Approved:{" "}
+            <strong>
+              {processedCharges.filter((c) => c.status === "APPROVED").length}
+            </strong>
+          </span>
+          <span className="bg-red-100 dark:bg-red-900/30 px-3 py-1 rounded-full block text-center">
+            Rejected:{" "}
+            <strong>
+              {processedCharges.filter((c) => c.status === "REJECTED").length}
+            </strong>
+          </span>
+        </div>
+      </div>
 
       {/* Tab Navigation */}
       <div className="border-b border-[var(--border-color)]">
         <div className="flex space-x-4">
           <button
-            onClick={() => setActiveTab("assign")}
+            onClick={() => setActiveTab("pending")}
             className={`py-2 px-4 font-medium border-b-2 transition-colors ${
-              activeTab === "assign"
+              activeTab === "pending"
                 ? "border-purple-500 text-purple-600"
                 : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
           >
-            <Plus size={16} className="inline mr-2" />
-            Assign Charge
+            <AlertCircle size={16} className="inline mr-2" />
+            Pending Charges ({pendingCharges.length})
           </button>
           <button
-            onClick={() => setActiveTab("view")}
+            onClick={() => setActiveTab("processed")}
             className={`py-2 px-4 font-medium border-b-2 transition-colors ${
-              activeTab === "view"
+              activeTab === "processed"
                 ? "border-purple-500 text-purple-600"
                 : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
           >
-            <Coins size={16} className="inline mr-2" />
-            View Charges
+            <CheckCircle size={16} className="inline mr-2" />
+            Approved & Rejected ({processedCharges.length})
           </button>
         </div>
       </div>
 
-      {/* Assign Charge Tab */}
-      {activeTab === "assign" && (
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Form Section */}
-          <div className="space-y-6 p-6 border border-[var(--border-color)] rounded-2xl bg-[var(--card-bg)]">
-            <h2 className="text-lg font-semibold flex items-center gap-2 text-[var(--text-primary)]">
-              {editingCharge ? (
-                <>
-                  <Edit className="w-5 h-5 text-amber-500" />
-                  Edit Convenience Charge
-                </>
-              ) : (
-                <>
-                  <Plus className="w-5 h-5 text-green-500" />
-                  Assign New Charge
-                </>
-              )}
-            </h2>
+      {/* Employee Filter */}
+      <div className="flex gap-4 items-center">
+        <label className="text-sm font-medium text-[var(--text-primary)]">
+          Filter by Employee:
+        </label>
+        <select
+          value={selectedEmployeeFilter}
+          onChange={(e) => setSelectedEmployeeFilter(e.target.value)}
+          className="px-4 py-2 border border-[var(--border-color)] rounded-lg bg-transparent text-[var(--text-primary)] focus:ring-2 focus:ring-purple-500 outline-none"
+        >
+          <option value="">All Employees</option>
+          {allEmployees.map((emp) => (
+            <option key={emp.id} value={emp.id}>
+              {emp.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-            {/* Employee select */}
-            <div>
-              <label className="text-sm font-medium mb-2 block text-[var(--text-primary)]">
-                Select Employee *
-              </label>
-
-              {/* Search Input */}
-              <div className="relative" ref={assignDropdownRef}>
-                <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)] transition-colors">
-                  <Search className="w-5 h-5 text-[var(--text-muted)]" />
-                  <input
-                    type="text"
-                    value={assignSearch}
-                    onChange={(e) => {
-                      setAssignSearch(e.target.value);
-                      setSelectedEmployee("");
-                      setAssignDropdown(true);
-                    }}
-                    onFocus={() => setAssignDropdown(true)}
-                    placeholder="Search by name, ID, department, or email..."
-                    className="w-full bg-transparent outline-none text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                    disabled={editingCharge !== null}
-                  />
-                </div>
-
-                {/* Dropdown List */}
-                {assignDropdown && !editingCharge && (
-                  <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto border border-[var(--border-color)] rounded-lg bg-[var(--card-bg)] shadow-lg">
-                    {filteredAssignEmployees.length > 0 ? (
-                      filteredAssignEmployees.map((emp) => (
-                        <button
-                          key={emp.id}
-                          type="button"
-                          onClick={() => handleSelectAssignEmployee(emp.id)}
-                          className="w-full text-left px-4 py-3 hover:bg-[var(--hover-bg)] transition-colors border-b border-[var(--border-color)] last:border-b-0"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-semibold">
-                              {emp.firstName[0]}
-                              {emp.lastName[0]}
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-[var(--text-primary)]">
-                                {emp.firstName} {emp.lastName}
-                              </p>
-                              <p className="text-xs text-[var(--text-muted)]">
-                                {emp.personNo} • {emp.department}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <p className="px-4 py-3 text-sm text-[var(--text-muted)] text-center">
-                        No employees found matching "{assignSearch}"
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Title */}
-            <div>
-              <label className="text-sm font-medium mb-2 block text-[var(--text-primary)]">
-                Charge Name *
-              </label>
-              <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)] transition-colors">
-                <User className="w-5 h-5 text-[var(--text-muted)]" />
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Food, Travel Charge, Rent..."
-                  className="w-full bg-transparent outline-none text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                />
-              </div>
-            </div>
-
-            {/* Amount */}
-            <div>
-              <label className="text-sm font-medium mb-2 block text-[var(--text-primary)]">
-                Amount (₹) *
-              </label>
-              <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)] transition-colors">
-                <Coins className="w-5 h-5 text-[var(--text-muted)]" />
-                <input
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  className="w-full bg-transparent outline-none text-[var(--text-primary)]"
-                />
-              </div>
-            </div>
-
-            {/* Date */}
-            <div>
-              <label className="text-sm font-medium mb-2 block text-[var(--text-primary)]">
-                Date *
-              </label>
-              <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)] transition-colors">
-                <Calendar className="w-5 h-5 text-[var(--text-muted)]" />
-                <input
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  type="date"
-                  className="w-full bg-transparent outline-none text-[var(--text-primary)]"
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleSave}
-                disabled={submitting}
-                className="flex-1 bg-purple-600 text-white py-2.5 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium"
-              >
-                {submitting
-                  ? "Saving..."
-                  : editingCharge
-                  ? "Update Charge"
-                  : "Assign Charge"}
-              </button>
-
-              {editingCharge && (
-                <button
-                  onClick={resetForm}
-                  disabled={submitting}
-                  className="px-6 border border-[var(--border-color)] text-[var(--text-primary)] py-2.5 rounded-lg hover:bg-[var(--hover-bg)] disabled:opacity-50 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Preview Section */}
-          <div className="space-y-6 p-6 border border-[var(--border-color)] rounded-2xl bg-[var(--card-bg)]">
-            <h2 className="text-lg font-semibold flex items-center gap-2 text-[var(--text-primary)]">
-              <Coins className="w-5 h-5 text-amber-500" />
-              Charge Preview
-            </h2>
-
-            {selectedEmployee ? (
-              <div className="space-y-4">
-                <div className="p-4 border border-[var(--border-color)] rounded-lg bg-[var(--hover-bg)]">
-                  <p className="font-medium text-[var(--text-primary)]">
-                    Employee: {getSelectedEmployeeName()}
-                  </p>
-                  {title && (
-                    <p className="text-sm text-[var(--text-primary)]">
-                      Charge: {title}
-                    </p>
-                  )}
-                  {amount && (
-                    <p className="text-sm text-green-500">
-                      Amount: ₹{Number(amount).toLocaleString()}
-                    </p>
-                  )}
-                  {date && (
-                    <p className="text-sm text-[var(--text-muted)]">
-                      Date: {new Date(date).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-
-                {!title || !amount || !date ? (
-                  <p className="text-amber-500 text-sm text-center py-4">
-                    Complete all fields to see full preview
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="text-[var(--text-muted)] text-center py-8">
-                Select an employee to preview charge details
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* View Charges Tab */}
-      {activeTab === "view" && (
+      {/* PENDING TAB */}
+      {activeTab === "pending" && (
         <div className="space-y-6">
-          <div className="p-6 border border-[var(--border-color)] rounded-2xl bg-[var(--card-bg)]">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-[var(--text-primary)]">
-              <Coins className="w-5 h-5 text-amber-500" />
-              Employee Convenience Charges
-            </h2>
-
-            {/* Employee Selector for Viewing */}
-            <div className="mb-6">
-              <label className="text-sm font-medium mb-2 block text-[var(--text-primary)]">
-                Select Employee to View Charges
-              </label>
-
-              {/* Search Input */}
-              <div className="relative max-w-md" ref={viewDropdownRef}>
-                <div className="flex items-center gap-2 border border-[var(--border-color)] rounded-lg p-3 bg-[var(--input-bg)]">
-                  <Search className="w-5 h-5 text-[var(--text-muted)]" />
-                  <input
-                    type="text"
-                    value={viewSearch}
-                    onChange={(e) => {
-                      setViewSearch(e.target.value);
-                      setSelectedEmployee("");
-                      setViewDropdown(true);
-                    }}
-                    onFocus={() => setViewDropdown(true)}
-                    placeholder="Search by name, ID, department, or email..."
-                    className="w-full bg-transparent outline-none text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                  />
+          {/* Bulk Actions */}
+          {selectedCharges.size > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-900/0 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+              <div className="flex justify-between items-center">
+                <p className="text-blue-900 dark:text-blue-500 font-medium">
+                  {selectedCharges.size} charge(s) selected
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleBulkAction("APPROVED")}
+                    disabled={processing}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg font-medium transition"
+                  >
+                    ✅ Approve All
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction("REJECTED")}
+                    disabled={processing}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg font-medium transition"
+                  >
+                    ❌ Reject All
+                  </button>
+                  <button
+                    onClick={() => setSelectedCharges(new Set())}
+                    disabled={processing}
+                    className="px-4 py-2 bg-gray-400 hover:bg-gray-500 disabled:opacity-50 text-white rounded-lg font-medium transition"
+                  >
+                    Clear
+                  </button>
                 </div>
-
-                {/* Dropdown List */}
-                {viewDropdown && (
-                  <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto border border-[var(--border-color)] rounded-lg bg-[var(--card-bg)] shadow-lg">
-                    {filteredViewEmployees.length > 0 ? (
-                      filteredViewEmployees.map((emp) => (
-                        <button
-                          key={emp.id}
-                          type="button"
-                          onClick={() => handleSelectViewEmployee(emp.id)}
-                          className="w-full text-left px-4 py-3 hover:bg-[var(--hover-bg)] transition-colors border-b border-[var(--border-color)] last:border-b-0"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-semibold">
-                              {emp.firstName[0]}
-                              {emp.lastName[0]}
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-[var(--text-primary)]">
-                                {emp.firstName} {emp.lastName}
-                              </p>
-                              <p className="text-xs text-[var(--text-muted)]">
-                                {emp.personNo} • {emp.department}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <p className="px-4 py-3 text-sm text-[var(--text-muted)] text-center">
-                        No employees found matching "{viewSearch}"
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
+          )}
 
-            {/* Charges Table */}
-            {selectedEmployee ? (
-              chargesLoading ? (
-                <p className="text-center py-8 text-[var(--text-muted)]">
-                  Loading charges...
-                </p>
-              ) : existingCharges.length > 0 ? (
-                <div className="overflow-x-auto border border-[var(--border-color)] rounded-xl">
+          {/* Grouped Pending Charges */}
+          {Object.keys(filteredPending).length === 0 ? (
+            <div className="text-center py-10 border border-[var(--border-color)] bg-[var(--card-bg)] rounded-xl">
+              <CheckCircle size={40} className="mx-auto text-green-500 mb-2" />
+              <p className="text-[var(--text-muted)] text-lg">
+                No pending charges
+              </p>
+              <p className="text-gray-500 text-sm">
+                All charges have been processed!
+              </p>
+            </div>
+          ) : (
+            Object.entries(filteredPending).map(([employeeId, group]) => (
+              <div
+                key={employeeId}
+                className="border border-[var(--border-color)] rounded-xl bg-[var(--card-bg)] overflow-hidden"
+              >
+                {/* Employee Header */}
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/0 dark:to-blue-900/0 p-4 border-b border-[var(--border-color)]">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+                        {group.employee?.firstName ?? "Unknown"}{" "}
+                        {group.employee?.lastName ?? "Employee"}
+                      </h3>
+                      <p className="text-sm text-[var(--text-muted)]">
+                        {group.employee?.department ?? "—"} •{" "}
+                        {group.employee?.designation || "—"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-amber-600">
+                        ₹{group.totalAmount.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {group.charges.length} charge(s)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Charges Table */}
+                <div className="overflow-x-auto">
                   <table className="min-w-full text-sm text-[var(--text-primary)]">
                     <thead>
                       <tr className="bg-[var(--hover-bg)] text-[var(--text-muted)] text-left">
-                        <th className="p-3 font-medium">Title</th>
-                        <th className="p-3 font-medium">Amount</th>
-                        <th className="p-3 font-medium">Date</th>
-                        <th className="p-3 font-medium">Created</th>
-                        <th className="p-3 font-medium">Actions</th>
+                        <th className="p-3 w-10">
+                          <input
+                            type="checkbox"
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedCharges);
+                              group.charges.forEach((charge) => {
+                                if (e.target.checked) {
+                                  newSelected.add(charge.id);
+                                } else {
+                                  newSelected.delete(charge.id);
+                                }
+                              });
+                              setSelectedCharges(newSelected);
+                            }}
+                            checked={group.charges.every((c) =>
+                              selectedCharges.has(c.id)
+                            )}
+                          />
+                        </th>
+                        <th className="p-3">Title</th>
+                        <th className="p-3">Amount</th>
+                        <th className="p-3">Date</th>
+                        <th className="p-3">Created</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {existingCharges.map((charge) => (
+                      {group.charges.map((charge) => (
                         <tr
                           key={charge.id}
                           className="border-t border-[var(--border-color)] hover:bg-[var(--hover-bg)] transition-colors"
                         >
-                          <td className="p-3">{charge.title}</td>
-                          <td className="p-3 text-green-500 font-semibold">
+                          <td className="p-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedCharges.has(charge.id)}
+                              onChange={() => toggleChargeSelection(charge.id)}
+                            />
+                          </td>
+                          <td className="p-3 font-medium">{charge.title}</td>
+                          <td className="p-3 text-amber-600 font-semibold">
                             ₹{charge.amount.toLocaleString()}
                           </td>
                           <td className="p-3">
-                            {new Date(charge.date).toLocaleDateString("en-IN", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })}
+                            {new Date(charge.date).toLocaleDateString("en-IN")}
                           </td>
                           <td className="p-3 text-[var(--text-muted)]">
                             {new Date(charge.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEdit(charge)}
-                                className="p-1 text-blue-500 hover:bg-blue-50 rounded transition-colors"
-                                title="Edit charge"
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(charge.id)}
-                                className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                                title="Delete charge"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              ) : (
-                <p className="text-center py-8 text-[var(--text-muted)]">
-                  No convenience charges found for {getSelectedEmployeeName()}
-                </p>
-              )
-            ) : (
-              <p className="text-center py-8 text-[var(--text-muted)]">
-                Select an employee to view their convenience charges
+
+                {/* Rejection Reasons - Show only if selecting for rejection */}
+                {selectedCharges.size > 0 &&
+                  group.charges.some((c) => selectedCharges.has(c.id)) && (
+                    <div className="p-4 bg-red-50 dark:bg-red-900/0 border-t border-[var(--border-color)]">
+                      <p className="text-sm font-semibold text-red-900 dark:text-red-500 mb-2">
+                        Rejection Reasons (if rejecting):
+                      </p>
+                      <div className="space-y-2">
+                        {group.charges
+                          .filter((c) => selectedCharges.has(c.id))
+                          .map((charge) => (
+                            <textarea
+                              key={`reason-${charge.id}`}
+                              placeholder={`Reason for ${charge.title} (optional)`}
+                              value={rejectionReasons[charge.id] || ""}
+                              onChange={(e) =>
+                                setRejectionReasons({
+                                  ...rejectionReasons,
+                                  [charge.id]: e.target.value,
+                                })
+                              }
+                              className="w-full p-2 text-sm border border-red-500 rounded bg-transparent text-[var(--text-primary)] focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                              rows={2}
+                            />
+                          ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* PROCESSED TAB */}
+      {activeTab === "processed" && (
+        <div className="space-y-6">
+          {Object.keys(filteredProcessed).length === 0 ? (
+            <div className="text-center py-10 border border-[var(--border-color)] bg-[var(--card-bg)] rounded-xl">
+              <FileText size={40} className="mx-auto text-gray-400 mb-2" />
+              <p className="text-[var(--text-muted)] text-lg">
+                No processed charges yet
               </p>
-            )}
-          </div>
+            </div>
+          ) : (
+            Object.entries(filteredProcessed).map(([employeeId, group]) => (
+              <div
+                key={employeeId}
+                className="border border-[var(--border-color)] rounded-xl bg-[var(--card-bg)] overflow-hidden"
+              >
+                {/* Employee Header */}
+                <div className="bg-linear-to-r from-gray-50 to-gray-100 dark:from-gray-900/0 dark:to-gray-900/0 p-4 border-b border-[var(--border-color)]">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+                        {group.employee?.firstName ?? "Unknown"}{" "}
+                        {group.employee?.lastName ?? "Employee"}
+                      </h3>
+                      <p className="text-sm text-[var(--text-muted)]">
+                        {group.employee?.department ?? "—"} •{" "}
+                        {group.employee?.designation || "—"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-gray-600 dark:text-gray-400">
+                        ₹{group.totalAmount.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {group.charges.length} charge(s)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Charges Table */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm text-[var(--text-primary)]">
+                    <thead>
+                      <tr className="bg-[var(--hover-bg)] text-[var(--text-muted)] text-left">
+                        <th className="p-3">Title</th>
+                        <th className="p-3">Amount</th>
+                        <th className="p-3">Date</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Approved On</th>
+                        <th className="p-3">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.charges.map((charge) => (
+                        <tr
+                          key={charge.id}
+                          className={`border-t border-[var(--border-color)] hover:bg-[var(--hover-bg)] transition-colors ${
+                            charge.status === "REJECTED" ? "opacity-75" : ""
+                          }`}
+                        >
+                          <td className="p-3 font-medium">{charge.title}</td>
+                          <td className="p-3 text-amber-600 font-semibold">
+                            ₹{charge.amount.toLocaleString()}
+                          </td>
+                          <td className="p-3">
+                            {new Date(charge.date).toLocaleDateString("en-IN")}
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                charge.status === "APPROVED"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {charge.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-[var(--text-muted)]">
+                            {charge.approvalDate
+                              ? new Date(
+                                  charge.approvalDate
+                                ).toLocaleDateString()
+                              : "—"}
+                          </td>
+                          <td className="p-3 text-xs text-[var(--text-muted)]">
+                            {charge.rejectionReason || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>

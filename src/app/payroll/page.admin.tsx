@@ -70,7 +70,7 @@ export default function PayrollAdminPage() {
   const handleGeneratePayslip = () => router.push("/payroll/generate-payslip");
 
   return (
-    <main className="p-6 space-y-6 min-h-screen bg-[var(--background)] text-[var(--text-primary)] transition-colors duration-300">
+    <main className="p-1 space-y-6 min-h-screen bg-[var(--background)] text-[var(--text-primary)] transition-colors duration-300">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold flex items-center gap-2">

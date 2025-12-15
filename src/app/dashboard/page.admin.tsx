@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import {
   Users,
   Building,
@@ -52,21 +53,33 @@ export default function DashboardAdmin() {
 
       {/* Stats */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <StatCard
-          icon={<Users className="text-blue-500" size={22} />}
-          title="Active Employees"
-          value={stats.totalEmployees || 0}
-        />
-        <StatCard
-          icon={<ClipboardList className="text-yellow-500" size={22} />}
-          title="Pending Leave Requests"
-          value={stats.activeLeaveRequests || 0}
-        />
-        <StatCard
-          icon={<Wallet className="text-green-500" size={22} />}
-          title="Pending Payroll Runs"
-          value={stats.pendingPayrolls || 0}
-        />
+        <Link href="/employees">
+          <StatCard
+            icon={<Users className="text-blue-500" size={22} />}
+            title="Active Employees"
+            value={stats.totalEmployees || 0}
+            isClickable
+          />
+        </Link>
+
+        <Link href="/leave">
+          <StatCard
+            icon={<ClipboardList className="text-yellow-500" size={22} />}
+            title="Pending Leave Requests"
+            value={stats.activeLeaveRequests || 0}
+            isClickable
+          />
+        </Link>
+
+        <Link href="/payroll">
+          <StatCard
+            icon={<Wallet className="text-green-500" size={22} />}
+            title="Pending Payroll Runs"
+            value={stats.pendingPayrolls || 0}
+            isClickable
+          />
+        </Link>
+
         <StatCard
           icon={<Building className="text-purple-500" size={22} />}
           title="Departments"
@@ -247,18 +260,26 @@ function StatCard({
   icon,
   title,
   value,
+  isClickable,
 }: {
   icon: React.ReactNode;
   title: string;
   value: number | string;
+  isClickable?: boolean;
 }) {
   return (
-    <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-sm p-5 hover:bg-[var(--hover-bg)] transition-all duration-200">
-      <div className="flex items-center gap-4">
-        <div className="p-3 bg-[var(--background)] rounded-xl flex items-center justify-center">
+    <div
+      className={`bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-sm p-5 h-32 flex items-center ${
+        isClickable
+          ? "hover:bg-[var(--hover-bg)] cursor-pointer"
+          : "hover:bg-[var(--hover-bg)]"
+      } transition-all duration-200`}
+    >
+      <div className="flex items-center gap-4 w-full">
+        <div className="p-3 bg-[var(--background)] rounded-xl flex items-center justify-center flex-shrink-0">
           {icon}
         </div>
-        <div>
+        <div className="flex-1">
           <p className="text-[var(--text-muted)] text-sm">{title}</p>
           <h3 className="text-xl font-semibold text-[var(--text-primary)]">
             {value}

@@ -217,7 +217,7 @@ export default function LeaveEmployeePage() {
    * UI
    ***********************/
   return (
-    <main className="min-h-screen space-y-10 p-6 bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
+    <main className="min-h-screen space-y-10 p-1 bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-[var(--text-primary)]">
@@ -232,7 +232,7 @@ export default function LeaveEmployeePage() {
       </div>
 
       {/* Leave Balances */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ">
         {balances.map((b) => (
           <div
             key={b.policyId}

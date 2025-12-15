@@ -76,7 +76,7 @@ export default function SettingsEmployeePage() {
   };
 
   return (
-    <div className="min-h-screen py-10 px-6 bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
+    <div className="min-h-screen   bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
       <div className="max-w-3xl mx-auto space-y-8 animate-fade-in-up">
         {/* Header */}
         <div className="flex items-center gap-3">

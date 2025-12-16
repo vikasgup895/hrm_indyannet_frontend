@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   X,
   Mail,
@@ -12,6 +12,9 @@ import {
   GraduationCap,
   Briefcase,
 } from "lucide-react";
+
+import { useAuth } from "@/store/auth";
+import { api } from "@/lib/api";
 
 type EmployeeDetailsModalProps = {
   open: boolean;
@@ -24,20 +27,24 @@ export default function EmployeeDetailsModal({
   onClose,
   employee,
 }: EmployeeDetailsModalProps) {
-  const { token } = require("@/store/auth").useAuth();
-  const [details, setDetails] = React.useState<any>(employee);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const { token } = useAuth();
 
-  React.useEffect(() => {
+  const [details, setDetails] = useState<any>(employee);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
     const fetchDetails = async () => {
-      if (!open || !employee?.id) return;
+      if (!open || !employee?.id || !token) return;
+
       setLoading(true);
       setError(null);
+
       try {
-        const { api } = require("@/lib/api");
         const res = await api.get(`/employees/${employee.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
         setDetails(res.data);
       } catch (err: any) {
@@ -47,6 +54,7 @@ export default function EmployeeDetailsModal({
         setLoading(false);
       }
     };
+
     fetchDetails();
   }, [open, employee?.id, token]);
 
@@ -55,9 +63,11 @@ export default function EmployeeDetailsModal({
   const fullName = `${details?.firstName || ""} ${
     details?.lastName || ""
   }`.trim();
+
   const doj = details?.hireDate
-    ? new Date(employee.hireDate).toLocaleDateString()
+    ? new Date(details.hireDate).toLocaleDateString()
     : "—";
+
   const birthday = details?.birthdate
     ? new Date(details.birthdate).toLocaleDateString()
     : "—";
@@ -125,12 +135,13 @@ export default function EmployeeDetailsModal({
               </span>
             </p>
           </div>
+
           <div className="space-y-3">
             <p>
               <Mail className="inline w-4 h-4 mr-2 text-blue-500" />
               Work Email:{" "}
               <span className="text-[var(--text-primary)]">
-                {details?.workEmail}
+                {details?.workEmail || "—"}
               </span>
             </p>
             <p>
@@ -162,6 +173,7 @@ export default function EmployeeDetailsModal({
           <h4 className="font-semibold text-[var(--text-primary)] mb-3">
             Bank Details
           </h4>
+
           {details?.bankDetail ? (
             <div className="grid md:grid-cols-2 gap-4 text-sm">
               <p>
@@ -223,6 +235,7 @@ export default function EmployeeDetailsModal({
           <h4 className="font-semibold text-[var(--text-primary)] mb-3">
             Documents
           </h4>
+
           {details?.documents?.length ? (
             <ul className="space-y-2">
               {details.documents.map((doc: any) => (

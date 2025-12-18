@@ -22,11 +22,7 @@ export default function LoginPage() {
     if (token) router.push("/dashboard");
   }, [token]);
 
-  // Demo users (for local testing)
-  const demoUsers = [
-    { role: "ADMIN", email: "admin@hrm.local", password: "Admin@123" },
-    { role: "EMPLOYEE", email: "shiva@hrm.local", password: "password123" },
-  ];
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,10 +43,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = (demoUser: any) => {
-    setEmail(demoUser.email);
-    setPassword(demoUser.password);
-  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-[var(--background)] text-[var(--text-primary)] transition-colors duration-300">
@@ -120,13 +113,7 @@ export default function LoginPage() {
 
           {/* Remember Me & Forgot Password */}
           <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-[var(--text-muted)]">
-              <input
-                type="checkbox"
-                className="w-4 h-4 text-blue-600 bg-[var(--card-bg)] border-[var(--border-color)] rounded focus:ring-blue-500 focus:ring-2"
-              />
-              Remember me
-            </label>
+            
             <button
               type="button"
               className="text-blue-500 hover:text-blue-400 transition-colors"
@@ -156,54 +143,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo Accounts Section 
-        <div className="mt-8 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 transition-colors">
-          <div className="text-center mb-4">
-            <h3 className="text-lg font-semibold mb-2">Demo Accounts</h3>
-            <p className="text-sm text-[var(--text-muted)]">
-              Click to auto-fill credentials
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {demoUsers.map((user) => (
-              <button
-                key={user.role}
-                type="button"
-                onClick={() => handleDemoLogin(user)}
-                className="w-full p-4 bg-[var(--background)] hover:bg-[var(--hover-bg)] border border-[var(--border-color)] rounded-lg transition-all duration-200 text-left group"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-lg ${
-                      user.role === "ADMIN"
-                        ? "bg-red-900/30 text-red-400"
-                        : "bg-blue-900/30 text-blue-400"
-                    }`}
-                  >
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-[var(--text-primary)] group-hover:text-blue-400 transition-colors">
-                          {user.role === "ADMIN" ? "Administrator" : "Employee"}
-                        </p>
-                        <p className="text-sm text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors">
-                          {user.email}
-                        </p>
-                      </div>
-                      <div className="text-xs text-[var(--text-muted)] border border-[var(--border-color)] px-2 py-1 rounded">
-                        {user.role}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-        */}
+       
 
         {/* Footer */}
         <div className="text-center mt-8 text-[var(--text-muted)]">

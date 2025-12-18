@@ -455,7 +455,20 @@ export default function EmployeesEmployeePage() {
             {/* PERSONAL DETAILS */}
             <SectionCard icon={User} title="Personal Details">
               <div className="grid gap-4">
-                <CardInfo icon={Calendar} label="Birthdate" value={profile!.birthdate} size="large" />
+                <CardInfo
+                  icon={Calendar}
+                  label="Birthdate"
+                  value={
+                    profile?.birthdate
+                      ? new Date(profile.birthdate).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—"
+                  }
+                  size="large"
+                />
                 <CardInfo icon={MapPin} label="Location" value={profile!.location} size="large" />
                 <CardInfo icon={User} label="Gender" value={profile!.gender} size="large" />
                 <CardInfo icon={Briefcase} label="Education Qualification" value={profile!.educationQualification} size="large" />

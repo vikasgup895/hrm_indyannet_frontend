@@ -90,7 +90,14 @@ type EmployeeProfile = {
    REUSABLE INPUT FIELD
    ========================================================================= */
 const InputField = React.memo((props: any) => {
-  const { label, name, value, onChange, type = "text", placeholder = "" } = props;
+  const {
+    label,
+    name,
+    value,
+    onChange,
+    type = "text",
+    placeholder = "",
+  } = props;
 
   return (
     <div className="space-y-1">
@@ -120,7 +127,13 @@ const InputField = React.memo((props: any) => {
 /* =========================================================================
    CARD INFO COMPONENT - IMPROVED
    ========================================================================= */
-function CardInfo({ icon: Icon, label, value, copyable = false, size = "default" }: any) {
+function CardInfo({
+  icon: Icon,
+  label,
+  value,
+  copyable = false,
+  size = "default",
+}: any) {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = async (text: string) => {
@@ -128,7 +141,7 @@ function CardInfo({ icon: Icon, label, value, copyable = false, size = "default"
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
-    } catch { }
+    } catch {}
   };
 
   const textSize = size === "large" ? "text-base" : "text-sm";
@@ -150,8 +163,14 @@ function CardInfo({ icon: Icon, label, value, copyable = false, size = "default"
         <p className="text-xs font-medium text-[var(--text-muted)] mb-1.5 uppercase tracking-wide">
           {label}
         </p>
-        <p className={`font-semibold text-[var(--text-primary)] break-words leading-relaxed ${textSize}`}>
-          {value ?? <span className="text-[var(--text-muted)] italic">Not provided</span>}
+        <p
+          className={`font-semibold text-[var(--text-primary)] break-words leading-relaxed ${textSize}`}
+        >
+          {value ?? (
+            <span className="text-[var(--text-muted)] italic">
+              Not provided
+            </span>
+          )}
         </p>
       </div>
 
@@ -184,6 +203,28 @@ export default function EmployeesEmployeePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Ref for the modal content to scroll to top
+  const modalContentRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle body overflow when modal opens/closes
+  useEffect(() => {
+    if (editing) {
+      document.body.style.overflow = "hidden";
+      // Scroll to top when modal opens
+      setTimeout(() => {
+        if (modalContentRef.current) {
+          modalContentRef.current.scrollTop = 0;
+        }
+      }, 0);
+    } else {
+      document.body.style.overflow = "auto";
+    }
+
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [editing]);
+
   const [editModel, setEditModel] = useState<any>({
     phone: "",
     gender: "",
@@ -191,6 +232,7 @@ export default function EmployeesEmployeePage() {
     emergencyContact: "",
     educationQualification: "",
     birthdate: "",
+    hireDate: "",
     location: "",
     bankName: "",
     accountNumber: "",
@@ -226,6 +268,7 @@ export default function EmployeesEmployeePage() {
           emergencyContact: p.emergencyContact ?? "",
           educationQualification: p.educationQualification ?? "",
           birthdate: p.birthdate ?? "",
+          hireDate: p.hireDate ?? "",
           location: p.location ?? "",
           bankName: p.bankDetail?.bankName ?? "",
           accountNumber: p.bankDetail?.accountNumber ?? "",
@@ -244,7 +287,9 @@ export default function EmployeesEmployeePage() {
     load();
   }, [token]);
 
-  const openEditor = () => setEditing(true);
+  const openEditor = () => {
+    setEditing(true);
+  };
 
   const handleEditChange = (e: any) => {
     const { name, value } = e.target;
@@ -255,7 +300,6 @@ export default function EmployeesEmployeePage() {
     setShowSensitive((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-
   // ------------fileupload -----------
   const handleFileUpload = async (e: any) => {
     const file = e.target.files?.[0];
@@ -265,16 +309,12 @@ export default function EmployeesEmployeePage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await api.post(
-        `/employees/${profile!.id}/upload`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const res = await api.post(`/employees/${profile!.id}/upload`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       // refresh profile
       const updated = await api.get("/employees/profile/me", {
@@ -289,7 +329,6 @@ export default function EmployeesEmployeePage() {
     }
   };
 
-
   /* ----------------------------------------------
      SAVE PROFILE
      ---------------------------------------------- */
@@ -297,29 +336,52 @@ export default function EmployeesEmployeePage() {
     setSaving(true);
 
     const payload: any = {
-      phone: editModel.phone,
-      gender: editModel.gender,
-      address: editModel.address,
-      emergencyContact: editModel.emergencyContact,
-      educationQualification: editModel.educationQualification,
-      birthdate: editModel.birthdate,
-      location: editModel.location,
+      phone: editModel.phone || null,
+      gender: editModel.gender || null,
+      address: editModel.address || null,
+      emergencyContact: editModel.emergencyContact || null,
+      educationQualification: editModel.educationQualification || null,
+      birthdate: editModel.birthdate
+        ? new Date(editModel.birthdate).toISOString()
+        : null,
+      hireDate: editModel.hireDate
+        ? new Date(editModel.hireDate).toISOString()
+        : null,
+      location: editModel.location || null,
       bankDetail: {
-        bankName: editModel.bankName,
-        accountNumber: editModel.accountNumber,
-        ifscCode: editModel.ifscCode,
-        branch: editModel.branchName,
-        pfNumber: editModel.pfNumber,
-        uan: editModel.uanNumber,
+        bankName: editModel.bankName || null,
+        accountNumber: editModel.accountNumber || null,
+        ifscCode: editModel.ifscCode || null,
+        branch: editModel.branchName || null,
+        pfNumber: editModel.pfNumber || null,
+        uan: editModel.uanNumber || null,
       },
     };
 
-    // Remove empty values
-    Object.keys(payload).forEach((k) => payload[k] ?? delete payload[k]);
-    Object.keys(payload.bankDetail).forEach(
-      (k) => payload.bankDetail[k] ?? delete payload.bankDetail[k]
-    );
-    if (Object.keys(payload.bankDetail).length === 0) delete payload.bankDetail;
+    // Remove null/undefined values
+    Object.keys(payload).forEach((k) => {
+      if (
+        payload[k] === null ||
+        payload[k] === undefined ||
+        payload[k] === ""
+      ) {
+        delete payload[k];
+      }
+    });
+
+    if (payload.bankDetail) {
+      Object.keys(payload.bankDetail).forEach((k) => {
+        if (
+          payload.bankDetail[k] === null ||
+          payload.bankDetail[k] === undefined ||
+          payload.bankDetail[k] === ""
+        ) {
+          delete payload.bankDetail[k];
+        }
+      });
+      if (Object.keys(payload.bankDetail).length === 0)
+        delete payload.bankDetail;
+    }
 
     try {
       const res = await api.put("/employees/me", payload, {
@@ -328,8 +390,9 @@ export default function EmployeesEmployeePage() {
 
       setProfile(res.data);
       setEditing(false);
-    } catch {
-      alert("Failed to update");
+    } catch (err: any) {
+      console.error("Update error:", err);
+      alert(err?.response?.data?.message || "Failed to update");
     } finally {
       setSaving(false);
     }
@@ -344,7 +407,6 @@ export default function EmployeesEmployeePage() {
   return (
     <div className="min-h-screen bg-[var(--background)] py-1 px-2">
       <div className="max-w-7xl mx-auto space-y-8">
-
         {/* -------------------------------------------------------------
             IMPROVED HEADER CARD
         ------------------------------------------------------------- */}
@@ -385,10 +447,11 @@ export default function EmployeesEmployeePage() {
 
             <div className="flex flex-col items-end gap-4">
               <span
-                className={`px-4 py-2 rounded-full text-sm font-medium ${profile!.status === "Active"
-                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                  : "bg-rose-100 text-rose-800 border border-rose-200"
-                  }`}
+                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                  profile!.status === "Active"
+                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                    : "bg-rose-100 text-rose-800 border border-rose-200"
+                }`}
               >
                 {profile!.status}
               </span>
@@ -407,17 +470,33 @@ export default function EmployeesEmployeePage() {
             IMPROVED PROFILE GRID
         ------------------------------------------------------------- */}
         <div className="grid lg:grid-cols-2 gap-8">
-
           {/* LEFT COLUMN - PERSONAL & CONTACT INFO */}
           <div className="space-y-8">
-
             {/* EMPLOYMENT OVERVIEW */}
             <SectionCard icon={Briefcase} title="Employment Overview">
               <div className="grid gap-4">
-                <CardInfo icon={Building} label="Department" value={profile!.department} size="large" />
-                <CardInfo icon={Briefcase} label="Designation" value={profile!.designation} size="large" />
-                <CardInfo icon={Users} label="Manager"
-                  value={profile!.manager ? `${profile!.manager.firstName} ${profile!.manager.lastName}` : "Direct Report"}
+                <CardInfo
+                  icon={Building}
+                  label="Department"
+                  value={profile!.department}
+                  size="large"
+                />
+                <CardInfo
+                  icon={Briefcase}
+                  label="Designation"
+                  value={profile!.designation}
+                  size="large"
+                />
+                <CardInfo
+                  icon={Users}
+                  label="Manager"
+                  value={
+                    profile!.manager
+                      ? `${profile!.manager.firstName} ${
+                          profile!.manager.lastName
+                        }`
+                      : "Direct Report"
+                  }
                   size="large"
                 />
                 <CardInfo
@@ -426,10 +505,10 @@ export default function EmployeesEmployeePage() {
                   value={
                     profile?.hireDate
                       ? new Date(profile.hireDate).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
                       : "—"
                   }
                   size="large"
@@ -440,18 +519,38 @@ export default function EmployeesEmployeePage() {
             {/* CONTACT INFORMATION */}
             <SectionCard icon={Contact} title="Contact Information">
               <div className="grid gap-4">
-                <CardInfo icon={Mail} label="Work Email" value={profile!.workEmail} copyable size="large" />
-                <CardInfo icon={Phone} label="Phone" value={profile!.phone} copyable size="large" />
-                <CardInfo icon={MapPin} label="Address" value={profile!.address} size="large" />
-                <CardInfo icon={Users} label="Emergency Contact" value={profile!.emergencyContact} size="large" />
+                <CardInfo
+                  icon={Mail}
+                  label="Work Email"
+                  value={profile!.workEmail}
+                  copyable
+                  size="large"
+                />
+                <CardInfo
+                  icon={Phone}
+                  label="Phone"
+                  value={profile!.phone}
+                  copyable
+                  size="large"
+                />
+                <CardInfo
+                  icon={MapPin}
+                  label="Address"
+                  value={profile!.address}
+                  size="large"
+                />
+                <CardInfo
+                  icon={Users}
+                  label="Emergency Contact"
+                  value={profile!.emergencyContact}
+                  size="large"
+                />
               </div>
             </SectionCard>
-
           </div>
 
           {/* RIGHT COLUMN - PERSONAL & FINANCIAL INFO */}
           <div className="space-y-8">
-
             {/* PERSONAL DETAILS */}
             <SectionCard icon={User} title="Personal Details">
               <div className="grid gap-4">
@@ -460,33 +559,83 @@ export default function EmployeesEmployeePage() {
                   label="Birthdate"
                   value={
                     profile?.birthdate
-                      ? new Date(profile.birthdate).toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })
+                      ? new Date(profile.birthdate).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          }
+                        )
                       : "—"
                   }
                   size="large"
                 />
-                <CardInfo icon={MapPin} label="Location" value={profile!.location} size="large" />
-                <CardInfo icon={User} label="Gender" value={profile!.gender} size="large" />
-                <CardInfo icon={Briefcase} label="Education Qualification" value={profile!.educationQualification} size="large" />
+                <CardInfo
+                  icon={MapPin}
+                  label="Location"
+                  value={profile!.location}
+                  size="large"
+                />
+                <CardInfo
+                  icon={User}
+                  label="Gender"
+                  value={profile!.gender}
+                  size="large"
+                />
+                <CardInfo
+                  icon={Briefcase}
+                  label="Education Qualification"
+                  value={profile!.educationQualification}
+                  size="large"
+                />
               </div>
             </SectionCard>
 
             {/* BANK & FINANCIAL DETAILS */}
-            <SectionCard icon={BanknoteIcon} title="Bank & Financial Information">
+            <SectionCard
+              icon={BanknoteIcon}
+              title="Bank & Financial Information"
+            >
               <div className="grid gap-4">
-                <CardInfo icon={Landmark} label="Bank Name" value={profile!.bankDetail?.bankName} size="large" />
-                <CardInfo icon={FileDigit} label="Account Number" value={profile!.bankDetail?.accountNumber} size="large" />
-                <CardInfo icon={FileDigit} label="IFSC Code" value={profile!.bankDetail?.ifscCode} size="large" />
-                <CardInfo icon={MapPin} label="Branch" value={profile!.bankDetail?.branch} size="large" />
-                <CardInfo icon={Wallet} label="PF Number" value={profile!.bankDetail?.pfNumber} size="large" />
-                <CardInfo icon={Users} label="UAN Number" value={profile!.bankDetail?.uan} size="large" />
+                <CardInfo
+                  icon={Landmark}
+                  label="Bank Name"
+                  value={profile!.bankDetail?.bankName}
+                  size="large"
+                />
+                <CardInfo
+                  icon={FileDigit}
+                  label="Account Number"
+                  value={profile!.bankDetail?.accountNumber}
+                  size="large"
+                />
+                <CardInfo
+                  icon={FileDigit}
+                  label="IFSC Code"
+                  value={profile!.bankDetail?.ifscCode}
+                  size="large"
+                />
+                <CardInfo
+                  icon={MapPin}
+                  label="Branch"
+                  value={profile!.bankDetail?.branch}
+                  size="large"
+                />
+                <CardInfo
+                  icon={Wallet}
+                  label="PF Number"
+                  value={profile!.bankDetail?.pfNumber}
+                  size="large"
+                />
+                <CardInfo
+                  icon={Users}
+                  label="UAN Number"
+                  value={profile!.bankDetail?.uan}
+                  size="large"
+                />
               </div>
             </SectionCard>
-
           </div>
         </div>
 
@@ -495,10 +644,11 @@ export default function EmployeesEmployeePage() {
 ============================================================== */}
         <SectionCard icon={FileText} title="Uploaded Documents">
           <div className="space-y-4">
-
             {/* Upload Button */}
             <div className="flex items-center justify-between">
-              <h4 className="text-[var(--text-primary)] font-medium">Your Documents</h4>
+              <h4 className="text-[var(--text-primary)] font-medium">
+                Your Documents
+              </h4>
 
               <label className="px-5 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
                 Upload Document
@@ -519,32 +669,35 @@ export default function EmployeesEmployeePage() {
                     key={doc.id}
                     className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]"
                   >
-                    <div className="flex items-center gap-3">
-                      <FileText className="text-indigo-500 w-5 h-5" />
-                      <a
-                        href={`${process.env.NODE_ENV === "production"
-                            ? "https://hrm.indyanet.com/"
-                            : "http://localhost:4000/"
+                    <div className="flex items-center gap-3 flex-1">
+                      <FileText className="text-indigo-500 w-5 h-5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <a
+                          href={`${
+                            process.env.NODE_ENV === "production"
+                              ? "https://hrm.indyanet.com/"
+                              : "http://localhost:4000/"
                           }${doc.storageUrl}`}
-                        target="_blank"
-                        className="text-[var(--text-primary)] hover:underline"
-                      >
-                        {doc.title}
-                      </a>
+                          target="_blank"
+                          className="text-[var(--text-primary)] hover:underline break-all"
+                        >
+                          {doc.title}
+                        </a>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">
+                          {new Date(doc.createdAt).toLocaleDateString("en-IN")}
+                        </p>
+                      </div>
                     </div>
-
-                    <span className="text-xs text-[var(--text-muted)]">
-                      {new Date(doc.createdAt).toLocaleDateString("en-IN")}
-                    </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-[var(--text-muted)]">No documents uploaded yet.</p>
+              <p className="text-sm text-[var(--text-muted)]">
+                No documents uploaded yet.
+              </p>
             )}
           </div>
         </SectionCard>
-
 
         {/* =====================================================================
             EDIT MODAL (UNCHANGED)
@@ -558,7 +711,7 @@ export default function EmployeesEmployeePage() {
             />
 
             {/* MODAL */}
-            <div className="relative max-w-3xl w-full rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-lg overflow-hidden">
+            <div className="relative max-w-3xl w-full rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-lg overflow-hidden max-h-[90vh] flex flex-col">
               {/* HEADER */}
               <div className="px-6 py-4 border-b border-[var(--border-color)] flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -573,18 +726,33 @@ export default function EmployeesEmployeePage() {
               </div>
 
               {/* CONTENT */}
-              <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6">
+              <div
+                ref={modalContentRef}
+                className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6"
+              >
                 {/* LOCKED FIELDS */}
                 <div>
                   <h4 className="font-semibold text-sm mb-3 text-[var(--text-primary)]">
                     Personal Details (Locked)
                   </h4>
                   <div className="grid md:grid-cols-2 gap-4">
-                    <LockedField label="First Name" value={profile!.firstName} />
+                    <LockedField
+                      label="First Name"
+                      value={profile!.firstName}
+                    />
                     <LockedField label="Last Name" value={profile!.lastName} />
-                    <LockedField label="Work Email" value={profile!.workEmail} />
-                    <LockedField label="Department" value={profile!.department} />
-                    <LockedField label="Designation" value={profile!.designation} />
+                    <LockedField
+                      label="Work Email"
+                      value={profile!.workEmail}
+                    />
+                    <LockedField
+                      label="Department"
+                      value={profile!.department}
+                    />
+                    <LockedField
+                      label="Designation"
+                      value={profile!.designation}
+                    />
                   </div>
                 </div>
 
@@ -594,11 +762,23 @@ export default function EmployeesEmployeePage() {
                     Personal Information
                   </h4>
                   <div className="grid md:grid-cols-2 gap-4">
-                    <InputField label="Phone" name="phone" value={editModel.phone} onChange={handleEditChange} />
-                    <InputField label="Gender" name="gender" value={editModel.gender} onChange={handleEditChange} />
+                    <InputField
+                      label="Phone"
+                      name="phone"
+                      value={editModel.phone}
+                      onChange={handleEditChange}
+                    />
+                    <InputField
+                      label="Gender"
+                      name="gender"
+                      value={editModel.gender}
+                      onChange={handleEditChange}
+                    />
                   </div>
                   <div className="mt-4">
-                    <label className="text-sm font-medium text-[var(--text-primary)]">Address</label>
+                    <label className="text-sm font-medium text-[var(--text-primary)]">
+                      Address
+                    </label>
                     <textarea
                       name="address"
                       rows={3}
@@ -612,8 +792,18 @@ export default function EmployeesEmployeePage() {
                     />
                   </div>
                   <div className="grid md:grid-cols-2 gap-4 mt-4">
-                    <InputField label="Emergency Contact" name="emergencyContact" value={editModel.emergencyContact} onChange={handleEditChange} />
-                    <InputField label="Education Qualification" name="educationQualification" value={editModel.educationQualification} onChange={handleEditChange} />
+                    <InputField
+                      label="Emergency Contact"
+                      name="emergencyContact"
+                      value={editModel.emergencyContact}
+                      onChange={handleEditChange}
+                    />
+                    <InputField
+                      label="Education Qualification"
+                      name="educationQualification"
+                      value={editModel.educationQualification}
+                      onChange={handleEditChange}
+                    />
                     <div>
                       <label className="text-sm font-medium text-[var(--text-primary)]">
                         Birthdate
@@ -629,7 +819,27 @@ export default function EmployeesEmployeePage() {
                         "
                       />
                     </div>
-                    <InputField label="Location" name="location" value={editModel.location} onChange={handleEditChange} />
+                    <div>
+                      <label className="text-sm font-medium text-[var(--text-primary)]">
+                        Hire Date
+                      </label>
+                      <input
+                        type="date"
+                        name="hireDate"
+                        value={editModel.hireDate?.split("T")[0] ?? ""}
+                        onChange={handleEditChange}
+                        className="
+                          w-full p-2.5 rounded-lg border border-[var(--border-color)]
+                          bg-[var(--card-bg)] text-[var(--text-primary)]
+                        "
+                      />
+                    </div>
+                    <InputField
+                      label="Location"
+                      name="location"
+                      value={editModel.location}
+                      onChange={handleEditChange}
+                    />
                   </div>
                 </div>
 
@@ -639,7 +849,12 @@ export default function EmployeesEmployeePage() {
                     Bank & Financial Details
                   </h4>
                   <div className="grid md:grid-cols-2 gap-4">
-                    <InputField label="Bank Name" name="bankName" value={editModel.bankName} onChange={handleEditChange} />
+                    <InputField
+                      label="Bank Name"
+                      name="bankName"
+                      value={editModel.bankName}
+                      onChange={handleEditChange}
+                    />
                     <SensitiveField
                       label="Account Number"
                       name="accountNumber"
@@ -648,8 +863,18 @@ export default function EmployeesEmployeePage() {
                       revealed={showSensitive.accountNumber}
                       onToggle={() => toggleSensitive("accountNumber")}
                     />
-                    <InputField label="IFSC Code" name="ifscCode" value={editModel.ifscCode} onChange={handleEditChange} />
-                    <InputField label="Branch" name="branchName" value={editModel.branchName} onChange={handleEditChange} />
+                    <InputField
+                      label="IFSC Code"
+                      name="ifscCode"
+                      value={editModel.ifscCode}
+                      onChange={handleEditChange}
+                    />
+                    <InputField
+                      label="Branch"
+                      name="branchName"
+                      value={editModel.branchName}
+                      onChange={handleEditChange}
+                    />
                     <SensitiveField
                       label="PF Number"
                       name="pfNumber"
@@ -683,14 +908,17 @@ export default function EmployeesEmployeePage() {
                   disabled={saving}
                   className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-60"
                 >
-                  {saving ? <RefreshCcw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
+                  {saving ? (
+                    <RefreshCcw className="animate-spin w-4 h-4" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                   Save Changes
                 </button>
               </div>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
@@ -733,7 +961,14 @@ function LockedField({ label, value }: any) {
 }
 
 /* Password-like sensitive fields */
-function SensitiveField({ label, name, value, onChange, revealed, onToggle }: any) {
+function SensitiveField({
+  label,
+  name,
+  value,
+  onChange,
+  revealed,
+  onToggle,
+}: any) {
   return (
     <div>
       <label className="text-sm font-medium text-[var(--text-primary)]">

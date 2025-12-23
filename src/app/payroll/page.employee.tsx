@@ -1,19 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Wallet, FileText, Calendar, Download } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import PayrollCard from "./components/PayrollCard";
 
-import { useTheme } from "@/context/ThemeProvider"; // ✅ added
 import { downloadPayslipPDF } from "@/lib/payslip-pdf";
 
 export default function PayrollEmployeePage() {
   const { token } = useAuth();
-  const { theme } = useTheme(); // ✅ added
-  const payslipRef = useRef<HTMLDivElement | null>(null);
   const [payslips, setPayslips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -105,7 +102,13 @@ export default function PayrollEmployeePage() {
           `${d.getDate()} ${d.toLocaleString("default", { month: "short" })}`;
         return `${fmt(s)} to ${fmt(e)}`;
       })(),
-      // Use payroll run pay date when available, otherwise generation date
+      // Include payrollRun data to ensure correct month is used in PDF filename and display
+      payrollRun: {
+        periodStart: p.payrollRun?.periodStart,
+        periodEnd: p.payrollRun?.periodEnd,
+        payDate: p.payrollRun?.payDate,
+      },
+      // Use actual payment date from payrollRun (1st of next month)
       payDate: p.payrollRun?.payDate || new Date().toISOString(),
       // PF & UAN intentionally omitted in PDF
       earnings: {
@@ -131,8 +134,8 @@ export default function PayrollEmployeePage() {
   };
 
   return (
-    <main className="p-1 space-y-6 min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
-      <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
+    <main className="p-1 space-y-6 min-h-screen bg-(--background) text-(--foreground) transition-colors duration-300">
+      <h1 className="text-2xl font-bold flex items-center gap-2 text-(--text-primary)">
         <Wallet className="text-blue-500" /> My Payroll
       </h1>
 
@@ -167,15 +170,15 @@ export default function PayrollEmployeePage() {
 
       {/* Payslips Table */}
       <section>
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-[var(--text-primary)]">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-(--text-primary)">
           <FileText className="text-blue-400" /> Payslips
         </h2>
 
         {loading ? (
-          <p className="text-[var(--text-muted)]">Loading your payslips...</p>
+          <p className="text-(--text-muted)">Loading your payslips...</p>
         ) : !payslips || payslips.length === 0 ? (
-          <div className="text-center py-10 border border-[var(--border-color)] bg-[var(--card-bg)] rounded-2xl">
-            <p className="text-[var(--text-muted)] mb-2 text-lg">
+          <div className="text-center py-10 border border-(--border-color) bg-(--card-bg) rounded-2xl">
+            <p className="text-(--text-muted) mb-2 text-lg">
               No payslips found
             </p>
             <p className="text-gray-500 text-sm">
@@ -183,13 +186,10 @@ export default function PayrollEmployeePage() {
             </p>
           </div>
         ) : (
-          <div
-            ref={payslipRef}
-            className="overflow-x-auto border border-[var(--border-color)] rounded-xl bg-[var(--card-bg)] transition-colors"
-          >
-            <table className="min-w-full text-sm text-[var(--text-primary)]">
+          <div className="overflow-x-auto border border-(--border-color) rounded-xl bg-(--card-bg) transition-colors">
+            <table className="min-w-full text-sm text-(--text-primary)">
               <thead>
-                <tr className="bg-[var(--hover-bg)] text-[var(--text-muted)] text-left">
+                <tr className="bg-(--hover-bg) text-(--text-muted) text-left">
                   <th className="p-3">Period</th>
                   <th className="p-3">Gross</th>
                   <th className="p-3">Deductions</th>
@@ -201,7 +201,7 @@ export default function PayrollEmployeePage() {
                 {payslips.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-t border-[var(--border-color)] hover:bg-[var(--hover-bg)] transition-colors"
+                    className="border-t border-(--border-color) hover:bg-(--hover-bg) transition-colors"
                   >
                     <td className="p-3">
                       {(() => {

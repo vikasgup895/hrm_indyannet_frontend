@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -17,8 +16,15 @@ import {
 import PayslipModal from "./PayslipModal";
 
 /* STATUS BADGE */
-const StatusBadge = ({ status }: { status?: string }) => {
-  const isPaid = status === "APPROVED" || status === "Paid";
+const StatusBadge = ({
+  status,
+  runStatus,
+}: {
+  status?: string;
+  runStatus?: string;
+}) => {
+  const isPaid =
+    status === "APPROVED" || status === "Paid" || runStatus === "PAID";
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
@@ -91,30 +97,25 @@ export default function PayrollTable({
 
   return (
     <>
-      <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-sm overflow-hidden transition-all duration-300">
+      <div className="bg-(--card-bg) border border-(--border-color) rounded-2xl shadow-sm overflow-hidden transition-all duration-300">
         {/* HEADER */}
-        <div className="px-6 py-4 bg-[var(--background)] border-b border-[var(--border-color)] transition-all">
-          <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+        <div className="px-6 py-4 bg-(--background) border-b border-(--border-color) transition-all">
+          <h3 className="text-lg font-semibold text-(--text-primary)">
             Payroll Management
           </h3>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
+          <p className="text-sm text-(--text-muted) mt-1">
             {data.length} employee{data.length !== 1 ? "s" : ""} •{" "}
-            {
-              data.filter((r) => r?.status === "APPROVED")
-                .length
-            }{" "}
-            processed this month
+            {data.filter((r) => r?.status === "APPROVED").length} processed this
+            month
           </p>
         </div>
 
         {/* TABLE */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              {/* Columns */}
-            </thead>
+            <thead>{/* Columns */}</thead>
 
-            <tbody className="divide-y divide-[var(--border-color)]">
+            <tbody className="divide-y divide-(--border-color)">
               {data.length > 0 ? (
                 data.map((row) => {
                   /* 🔍 Log each row when it renders */
@@ -122,57 +123,60 @@ export default function PayrollTable({
                   return (
                     <tr
                       key={row.id}
-                      className="hover:bg-[var(--border-color)]/20 transition-colors duration-150"
+                      className="hover:bg-(--border-color)/20 transition-colors duration-150"
                     >
                       {/* Employee */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                          <div className="w-8 h-8 bg-linear-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
                             <span className="text-xs font-semibold text-white">
                               {row.employee?.firstName?.[0]?.toUpperCase() ||
                                 "U"}
                             </span>
                           </div>
                           <div>
-                            <p className="font-semibold text-[var(--text-primary)]">
+                            <p className="font-semibold text-(--text-primary)">
                               {row.employee.firstName} {row.employee.lastName}
                             </p>
-                            <p className="text-xs text-[var(--text-muted)]">
-  ID: {row.employee?.personNo || "—"}
-</p>
-
+                            <p className="text-xs text-(--text-muted)">
+                              ID: {row.employee?.personNo || "—"}
+                            </p>
                           </div>
                         </div>
                       </td>
 
                       {/* Department */}
-                      <td className="px-6 py-4 text-[var(--text-primary)]">
+                      <td className="px-6 py-4 text-(--text-primary)">
                         {row.employee.department}
                       </td>
 
                       {/* Salary */}
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-[var(--text-primary)]">
+                        <span className="font-semibold text-(--text-primary)">
                           {formatSalary(row.net)}
                         </span>
                       </td>
 
                       {/* Period */}
-                      <td className="px-6 py-4 text-[var(--text-primary)]">
+                      <td className="px-6 py-4 text-(--text-primary)">
                         {row.payrollRun?.periodEnd
-                          ? new Date(
-                              row.payrollRun.periodEnd
-                            ).toLocaleString("default", {
-                              month: "long",
-                              year: "numeric",
-                            })
+                          ? new Date(row.payrollRun.periodEnd).toLocaleString(
+                              "default",
+                              {
+                                month: "long",
+                                year: "numeric",
+                              }
+                            )
                           : "—"}
                       </td>
 
                       {/* Status */}
                       <td className="px-6 py-4">
-<StatusBadge status={row.status} />
-</td>
+                        <StatusBadge
+                          status={row.status}
+                          runStatus={row.payrollRun?.status}
+                        />
+                      </td>
 
                       {/* Actions */}
                       <td className="px-6 py-4 text-center">
@@ -184,7 +188,7 @@ export default function PayrollTable({
                               setSelected(row);
                             }}
                             variant={
-                              row.payrollRun?.status === "PENDING"
+                              row.payrollRun?.status === "DRAFT"
                                 ? "primary"
                                 : "secondary"
                             }

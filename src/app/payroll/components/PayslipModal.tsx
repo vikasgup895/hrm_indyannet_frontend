@@ -79,8 +79,8 @@ export default function PayslipModal({
           `${d.getDate()} ${d.toLocaleString("default", { month: "short" })}`;
         return `${fmt(s)} to ${fmt(e)}`;
       })(),
-      // Show date of payslip generation
-      payDate: new Date().toISOString(),
+      // Use actual payment date from payrollRun (1st of next month)
+      payDate: data.payrollRun?.payDate || new Date().toISOString(),
       // PF & UAN intentionally hidden/commented for future use
       // pfNumber: data.employee?.bankDetail?.pfNumber,
       // uan: data.employee?.bankDetail?.uan,
@@ -111,34 +111,34 @@ export default function PayslipModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
+      <div className="bg-(--card-bg) border border-(--border-color) rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[var(--border-color)] bg-[var(--background)]">
+        <div className="flex items-center justify-between p-6 border-b border-(--border-color) bg-(--background)">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 rounded-lg">
               <FileText className="w-6 h-6 text-white" />
             </div>
             <div>
               <h2 className="text-xl font-bold">Payslip</h2>
-              <p className="text-sm text-[var(--text-muted)]">{monthYear}</p>
+              <p className="text-sm text-(--text-muted)">{monthYear}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-[var(--border-color)]/40 rounded-lg"
+            className="p-2 hover:bg-(--border-color)/40 rounded-lg"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-[var(--border-color)]">
+        <div className="flex border-b border-(--border-color)">
           <button
             onClick={() => setActiveTab("overview")}
             className={`flex-1 py-3 text-sm font-medium ${
               activeTab === "overview"
                 ? "text-blue-500 border-b-2 border-blue-500"
-                : "text-[var(--text-muted)]"
+                : "text-(--text-muted)"
             }`}
           >
             Overview
@@ -148,7 +148,7 @@ export default function PayslipModal({
             className={`flex-1 py-3 text-sm font-medium ${
               activeTab === "detailed"
                 ? "text-blue-500 border-b-2 border-blue-500"
-                : "text-[var(--text-muted)]"
+                : "text-(--text-muted)"
             }`}
           >
             Detailed
@@ -156,7 +156,7 @@ export default function PayslipModal({
         </div>
 
         {/* Body */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto text-[var(--text-primary)]">
+        <div className="p-6 max-h-[60vh] overflow-y-auto text-(--text-primary)">
           {activeTab === "overview" ? (
             <>
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -179,7 +179,7 @@ export default function PayslipModal({
                 />
               </div>
 
-              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl p-6 border border-blue-500/20 text-center">
+              <div className="bg-linear-to-r from-blue-500/10 to-purple-500/10 rounded-xl p-6 border border-blue-500/20 text-center">
                 <div className="flex items-center gap-3 justify-center mb-3">
                   <DollarSign className="w-6 h-6 text-blue-500" />
                   <h3 className="text-xl font-bold">Net Salary</h3>
@@ -272,11 +272,16 @@ export default function PayslipModal({
                 <div>
                   <p className="font-semibold text-gray-700">Pay Date</p>
                   <p>
-                    {new Date().toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {data.payrollRun?.payDate
+                      ? new Date(data.payrollRun.payDate).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          }
+                        )
+                      : "—"}
                   </p>
                 </div>
               </div>
@@ -326,7 +331,7 @@ export default function PayslipModal({
                     {Object.entries({
                       "Leave Deduction": data.leaveDeduction || 0,
                       "Professional Tax": data.professionalTax || 0,
-                      Other: data.otherDeduction || 0,
+                      Other: data.otherDeductions || 0,
                     }).map(([key, val]) => (
                       <Row key={key} label={key} value={val as number} />
                     ))}
@@ -355,9 +360,12 @@ export default function PayslipModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-[var(--border-color)] bg-[var(--background)]">
-          <span className="text-sm text-[var(--text-muted)]">
-            Generated on {new Date().toLocaleDateString()}
+        <div className="flex items-center justify-between p-6 border-t border-(--border-color) bg-(--background)">
+          <span className="text-sm text-(--text-muted)">
+            Pay Date:{" "}
+            {data.payrollRun?.payDate
+              ? new Date(data.payrollRun.payDate).toLocaleDateString()
+              : "—"}
           </span>
           <button
             onClick={handleDownloadPdf}
@@ -373,10 +381,10 @@ export default function PayslipModal({
 
 function Box({ icon: Icon, label, value, sub }: any) {
   return (
-    <div className="bg-[var(--background)] border border-[var(--border-color)] p-4 rounded-xl">
+    <div className="bg-(--background) border border-(--border-color) p-4 rounded-xl">
       <Icon className="w-5 h-5 text-blue-500 mb-1" />
       <p className="font-semibold">{value}</p>
-      {sub && <p className="text-sm text-[var(--text-muted)]">{sub}</p>}
+      {sub && <p className="text-sm text-(--text-muted)">{sub}</p>}
     </div>
   );
 }

@@ -1303,6 +1303,9 @@ export default function EmployeesAdminPage() {
                 />
               </FormField>
               <FormField label="Upload Document">
+                  <p className="text-xs text-[var(--text-muted)]">
+                    📌 Document size should not exceed 1 MB
+                  </p>
                 <div className="flex items-center gap-3">
                   <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
                     Choose File

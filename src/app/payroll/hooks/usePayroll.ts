@@ -45,7 +45,11 @@ export function usePayroll(role: string) {
             year: "numeric",
           })
         : "N/A",
-      status: payslip.payrollRun?.status === "APPROVED" ? "Paid" : "Pending",
+      // Treat PAID payroll runs or APPROVED payslips as Paid, everything else Pending
+      status:
+        payslip.payrollRun?.status === "PAID" || payslip.status === "APPROVED"
+          ? "Paid"
+          : "Pending",
       gross: payslip.gross,
       deductions: payslip.deductions,
       net: payslip.net,

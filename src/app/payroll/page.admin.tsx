@@ -38,27 +38,47 @@ export default function PayrollAdminPage() {
 
       if (data.length > 0) {
         const latest = data[0];
-        // if (process.env.NODE_ENV === "development")
-        //   console.log("🧾 latest payslip payload:", latest);
-
         const rawPeriodEnd = latest.payrollRun?.periodEnd;
-        // if (process.env.NODE_ENV === "development")
-        //   console.log("📅 Raw periodEnd:", rawPeriodEnd);
-
         const parsed = new Date(rawPeriodEnd);
-        // if (process.env.NODE_ENV === "development")
-        //   console.log("📅 parsed Date:", parsed);
 
-        const nice = parsed.toLocaleString("default", {
-          month: "long",
-          year: "numeric",
-        });
-        // if (process.env.NODE_ENV === "development")
-        //   console.log("✅ formatted payroll month:", nice);
+        
+        // Helper: map month index to English month name
+        const monthNames = [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
 
+        // Current payroll month (e.g. December 2025)
+        const currentMonthLabel = `${
+          monthNames[parsed.getMonth()]
+        } ${parsed.getFullYear()}`;
+
+        // Previous month of the current payroll month (e.g. November 2025)
+        let prevMonthIndex = parsed.getMonth() - 1;
+        let prevYear = parsed.getFullYear();
+
+        if (prevMonthIndex < 0) {
+          // Wrap around from January to December of previous year
+          prevMonthIndex = 11;
+          prevYear -= 1;
+        }
+
+        const lastProcessedLabel = `${monthNames[prevMonthIndex]} ${prevYear}`;
+
+        
         setSummary({
-          currentMonth: nice,
-          lastProcessed: nice,
+          currentMonth: currentMonthLabel,
+          lastProcessed: lastProcessedLabel,
           totalPaid: data.length,
         });
       }

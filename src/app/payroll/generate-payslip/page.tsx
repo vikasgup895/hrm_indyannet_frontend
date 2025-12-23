@@ -124,9 +124,13 @@ function monthLabel(isoYM: string) {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-/** Return yyyy-mm from a payrollRun periodEnd (BUG-3 util) */
+/** Return yyyy-mm from a payrollRun periodEnd */
 function runMonth(r: any): string {
-  return new Date(r.periodEnd).toISOString().slice(0, 7);
+  if (!r.periodEnd) return "";
+  // The periodEnd is in ISO format like "2025-12-29T18:30:00.000Z"
+  // slice(0, 7) gives us "2025-12"
+  const isoString = new Date(r.periodEnd).toISOString();
+  return isoString.slice(0, 7);
 }
 
 /* ─────────────────────────────── Component ─────────────────────────────── */
@@ -148,6 +152,7 @@ export default function PayslipPage() {
 
   const [showSlip, setShowSlip] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [payrollRun, setPayrollRun] = useState<any>(null);
 
   // inputs
   const [earnings, setEarnings] = useState({
@@ -289,27 +294,77 @@ export default function PayslipPage() {
 
       // 2) Filter runs for the SELECTED month (BUG-1 + BUG-3 fix)
       const targetMonth = month; // yyyy-mm from the input
-      const monthRuns = runs.filter((r) => runMonth(r) === targetMonth);
+
+      let monthRuns = runs.filter((r) => {
+        const rm = runMonth(r);
+        console.log(`  - Run ${r.id}: periodEnd=${r.periodEnd}, month=${rm}`);
+        return rm === targetMonth;
+      });
+
+      // 🔧 Auto-create payroll run if it doesn't exist
+      if (monthRuns.length === 0) {
+        const [year, monthStr] = month.split("-");
+        const monthNum = parseInt(monthStr) - 1; // Convert to 0-indexed
+        const periodStart = new Date(parseInt(year), monthNum, 1);
+        const periodEnd = new Date(parseInt(year), monthNum + 1, 0);
+        // Pay date policy: 10th of the next month
+        const payDate = new Date(parseInt(year), monthNum + 1, 10);
+
+        try {
+          await api.post(
+            "/payroll/runs",
+            {
+              periodStart: periodStart.toISOString(),
+              periodEnd: periodEnd.toISOString(),
+              payDate: payDate.toISOString(),
+            },
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          // Fetch updated runs list
+          const updatedRunRes = await api.get("/payroll/runs", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const updatedRuns: any[] = Array.isArray(updatedRunRes.data)
+            ? updatedRunRes.data
+            : [];
+          monthRuns = updatedRuns.filter((r) => runMonth(r) === targetMonth);
+
+          alert(`✅ Payroll run created for ${monthLabel(targetMonth)}`);
+        } catch (createErr) {
+          console.error("Failed to auto-create payroll run:", createErr);
+          alert(
+            `❌ Failed to create payroll run for ${monthLabel(targetMonth)}.`
+          );
+          return;
+        }
+      }
 
       if (monthRuns.length === 0) {
-        alert(`❌ No payroll run exists for ${monthLabel(targetMonth)}.`);
+        alert(
+          `❌ No payroll run exists for ${monthLabel(
+            targetMonth
+          )}. Will create one...`
+        );
         return;
       }
 
-      // 3) Choose DRAFT first; otherwise latest APPROVED within that month
+      // 3) Choose DRAFT first; otherwise latest PAID/APPROVED within that month
       const run =
         monthRuns.find((r) => r.status === "DRAFT") ||
-        monthRuns
-          .filter((r) => r.status === "APPROVED")
-          .sort(
-            (a, b) =>
-              new Date(b.periodEnd).getTime() - new Date(a.periodEnd).getTime()
-          )[0];
+        monthRuns.find((r) => r.status === "PAID") ||
+        monthRuns.find((r) => r.status === "APPROVED") ||
+        monthRuns[0]; // Fallback to first run if none match
 
       if (!run) {
         alert(`❌ No usable payroll run found for ${monthLabel(targetMonth)}.`);
         return;
       }
+
+      // Save the payroll run to state for preview display
+      setPayrollRun(run);
 
       // 4) Generate payslip
       const payload = {
@@ -413,7 +468,12 @@ export default function PayslipPage() {
       employeeId: emp.personNo,
       email: emp.workEmail ?? "—",
       payPeriod: monthLabel(month),
-      payDate: new Date().toLocaleDateString("en-GB"),
+      payrollRun: {
+        periodStart: payrollRun?.periodStart,
+        periodEnd: payrollRun?.periodEnd,
+        payDate: payrollRun?.payDate,
+      },
+      payDate: payrollRun?.payDate || new Date().toISOString(),
       // PF and UAN intentionally hidden/commented for future use
       earnings: {
         Basic: earnings.basic,
@@ -650,7 +710,11 @@ export default function PayslipPage() {
               <Field label="Pay Period" value={monthLabel(month)} />
               <Field
                 label="Pay Date"
-                value={new Date().toLocaleDateString("en-GB")}
+                value={
+                  payrollRun?.payDate
+                    ? new Date(payrollRun.payDate).toLocaleDateString("en-GB")
+                    : "—"
+                }
               />
               {/* <Field
                 label="PF A/C Number"

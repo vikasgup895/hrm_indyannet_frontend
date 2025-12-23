@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState,useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api";
 import Link from "next/link";
 import { useAuth } from "@/store/auth";
@@ -111,17 +111,17 @@ export default function InsuranceDashboard() {
       });
 
       alert("✅ Document uploaded successfully");
-      
+
       // CLEAR ALL FORM FIELDS AFTER SUCCESSFUL UPLOAD
       setSelectedEmployee("");
       setInsuranceId("");
       setFile(null);
-      
+
       // Clear the file input visually
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-      
+
       // Refresh documents list based on current filter mode
       if (listFilterMode === "employee") {
         await fetchDocuments({ employeeId: selectedEmployee });
@@ -167,9 +167,14 @@ export default function InsuranceDashboard() {
           className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 space-y-4"
         >
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-              Upload Insurance Document
-            </h2>
+            <div>
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                Upload Insurance Document
+              </h2>
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                📌 Document size should not exceed 1 MB
+              </p>
+            </div>
             <button
               type="button"
               onClick={clearForm}

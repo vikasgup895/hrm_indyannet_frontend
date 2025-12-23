@@ -646,9 +646,14 @@ export default function EmployeesEmployeePage() {
           <div className="space-y-4">
             {/* Upload Button */}
             <div className="flex items-center justify-between">
-              <h4 className="text-[var(--text-primary)] font-medium">
-                Your Documents
-              </h4>
+              <div>
+                <h4 className="text-[var(--text-primary)] font-medium">
+                  Your Documents
+                </h4>
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  📌 Document size should not exceed 1 MB
+                </p>
+              </div>
 
               <label className="px-5 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
                 Upload Document

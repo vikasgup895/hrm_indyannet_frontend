@@ -146,6 +146,13 @@ export default function PayslipPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
 
+  // Custom pay date selection (default to 10th of next month)
+  const [customPayDate, setCustomPayDate] = useState<string>(() => {
+    const d = new Date();
+    const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 10);
+    return nextMonth.toISOString().split('T')[0]; // yyyy-mm-dd format
+  });
+
   const [emp, setEmp] = useState<FullEmployee | null>(null);
   const [loadingEmp, setLoadingEmp] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
@@ -307,8 +314,8 @@ export default function PayslipPage() {
         const monthNum = parseInt(monthStr) - 1; // Convert to 0-indexed
         const periodStart = new Date(parseInt(year), monthNum, 1);
         const periodEnd = new Date(parseInt(year), monthNum + 1, 0);
-        // Pay date policy: 10th of the next month
-        const payDate = new Date(parseInt(year), monthNum + 1, 10);
+        // Use custom pay date selected by user
+        const payDate = new Date(customPayDate);
 
         try {
           await api.post(
@@ -352,7 +359,7 @@ export default function PayslipPage() {
       }
 
       // 3) Choose DRAFT first; otherwise latest PAID/APPROVED within that month
-      const run =
+      let run =
         monthRuns.find((r) => r.status === "DRAFT") ||
         monthRuns.find((r) => r.status === "PAID") ||
         monthRuns.find((r) => r.status === "APPROVED") ||
@@ -361,6 +368,32 @@ export default function PayslipPage() {
       if (!run) {
         alert(`❌ No usable payroll run found for ${monthLabel(targetMonth)}.`);
         return;
+      }
+
+      // Update payroll run's payDate if it differs from custom selection
+      const selectedPayDate = new Date(customPayDate).toISOString().split('T')[0];
+      const existingPayDate = run.payDate ? new Date(run.payDate).toISOString().split('T')[0] : null;
+      
+      if (existingPayDate !== selectedPayDate) {
+        try {
+          // Update the run with new payDate
+          await api.patch(
+            `/payroll/runs/${run.id}`,
+            { payDate: new Date(customPayDate).toISOString() },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          
+          // Refresh the run data
+          const refreshedRun = await api.get(`/payroll/runs/${run.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          run = refreshedRun.data || run;
+          
+          console.log(`✅ Updated payroll run payDate to ${customPayDate}`);
+        } catch (updateErr) {
+          console.error("Failed to update payroll run payDate:", updateErr);
+          // Continue with existing date if update fails
+        }
       }
 
       // Save the payroll run to state for preview display
@@ -554,6 +587,25 @@ export default function PayslipPage() {
                   className=" px-2 py-2 rounded-lg border border-(--border-color) bg-(--card-bg) pr-1"
                 />
               </div>
+            </label>
+
+            <label className="flex flex-col">
+              <span className="text-sm text-(--text-muted) mb-1">
+                Pay Date (custom)
+              </span>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={customPayDate}
+                  onChange={(e) => setCustomPayDate(e.target.value)}
+                  className="px-2 py-2 rounded-lg border border-(--border-color) bg-(--card-bg) w-full"
+                />
+              </div>
+              {payrollRun?.payDate && showSlip && (
+                <span className="text-xs text-green-600 mt-1">
+                  ✓ Using: {new Date(payrollRun.payDate).toLocaleDateString("en-GB")}
+                </span>
+              )}
             </label>
           </div>
 

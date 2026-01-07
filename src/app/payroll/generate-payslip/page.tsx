@@ -601,11 +601,11 @@ export default function PayslipPage() {
                   className="px-2 py-2 rounded-lg border border-(--border-color) bg-(--card-bg) w-full"
                 />
               </div>
-              {payrollRun?.payDate && showSlip && (
+            {  /*{payrollRun?.payDate && showSlip && (
                 <span className="text-xs text-green-600 mt-1">
                   ✓ Using: {new Date(payrollRun.payDate).toLocaleDateString("en-GB")}
                 </span>
-              )}
+              )}*/}
             </label>
           </div>
 

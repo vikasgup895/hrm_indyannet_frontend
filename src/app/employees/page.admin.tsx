@@ -947,6 +947,18 @@ export default function EmployeesAdminPage() {
     }
   };
 
+
+  /* -------------------------------------------
+     Scroll to Top on Form Open
+  -------------------------------------------- */
+  useEffect(() => {
+    if (showForm && typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [showForm]);
+  /* -------------------------------------------
+     Start Edit Employee
+  -------------------------------------------- */
   const startEdit = (emp: Employee) => {
     setEditingEmployee(emp);
 
@@ -971,6 +983,10 @@ export default function EmployeesAdminPage() {
     });
 
     setShowForm(true); // Open the same form in edit mode
+
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const getNewHireCount = (employees: any[]): number => {
@@ -1228,6 +1244,8 @@ export default function EmployeesAdminPage() {
                   <option value="EMPLOYEE">Employee</option>
                   {role === "ADMIN" && <option value="HR">HR</option>}
                   {role === "ADMIN" && <option value="ADMIN">Admin</option>}
+                  {(role === "MD" || role === "CAO") && <option value="MD">MD</option>}
+                  {(role === "MD" || role === "CAO") && <option value="CAO">CAO</option>}
                 </Select>
               </FormField>
 
@@ -1506,7 +1524,7 @@ export default function EmployeesAdminPage() {
                                   Delete
                                 </button>
 
-                                {(role === "HR" || role === "ADMIN") && (
+                                {(role === "HR" || role === "ADMIN" || role === "MD" || role === "CAO") && (
                                   <button
                                     onClick={() => startEdit(employee)}
                                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"

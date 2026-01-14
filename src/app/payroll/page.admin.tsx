@@ -19,71 +19,70 @@ export default function PayrollAdminPage() {
     totalPaid: 0,
   });
 
+  const fetchData = async () => {
+    // if (process.env.NODE_ENV === "development")
+    //   console.log("📡 Fetching /payroll/payslips");
+
+    const res = await api.get("/payroll/payslips", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    // if (process.env.NODE_ENV === "development")
+    //   console.log("✅ API returned:", res.data);
+    const data = res.data || [];
+    setPayrolls(data);
+
+    if (data.length > 0) {
+      const latest = data[0];
+      const rawPeriodEnd = latest.payrollRun?.periodEnd;
+      const parsed = new Date(rawPeriodEnd);
+
+      
+      // Helper: map month index to English month name
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+
+      // Current payroll month (e.g. December 2025)
+      const currentMonthLabel = `${
+        monthNames[parsed.getMonth()]
+      } ${parsed.getFullYear()}`;
+
+      // Previous month of the current payroll month (e.g. November 2025)
+      let prevMonthIndex = parsed.getMonth() - 1;
+      let prevYear = parsed.getFullYear();
+
+      if (prevMonthIndex < 0) {
+        // Wrap around from January to December of previous year
+        prevMonthIndex = 11;
+        prevYear -= 1;
+      }
+
+      const lastProcessedLabel = `${monthNames[prevMonthIndex]} ${prevYear}`;
+
+      
+      setSummary({
+        currentMonth: currentMonthLabel,
+        lastProcessed: lastProcessedLabel,
+        totalPaid: data.length,
+      });
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
     if (payrolls.length > 0) return; // prevent double StrictMode fetch
-
-    const fetchData = async () => {
-      // if (process.env.NODE_ENV === "development")
-      //   console.log("📡 Fetching /payroll/payslips");
-
-      const res = await api.get("/payroll/payslips", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // if (process.env.NODE_ENV === "development")
-      //   console.log("✅ API returned:", res.data);
-      const data = res.data || [];
-      setPayrolls(data);
-
-      if (data.length > 0) {
-        const latest = data[0];
-        const rawPeriodEnd = latest.payrollRun?.periodEnd;
-        const parsed = new Date(rawPeriodEnd);
-
-        
-        // Helper: map month index to English month name
-        const monthNames = [
-          "January",
-          "February",
-          "March",
-          "April",
-          "May",
-          "June",
-          "July",
-          "August",
-          "September",
-          "October",
-          "November",
-          "December",
-        ];
-
-        // Current payroll month (e.g. December 2025)
-        const currentMonthLabel = `${
-          monthNames[parsed.getMonth()]
-        } ${parsed.getFullYear()}`;
-
-        // Previous month of the current payroll month (e.g. November 2025)
-        let prevMonthIndex = parsed.getMonth() - 1;
-        let prevYear = parsed.getFullYear();
-
-        if (prevMonthIndex < 0) {
-          // Wrap around from January to December of previous year
-          prevMonthIndex = 11;
-          prevYear -= 1;
-        }
-
-        const lastProcessedLabel = `${monthNames[prevMonthIndex]} ${prevYear}`;
-
-        
-        setSummary({
-          currentMonth: currentMonthLabel,
-          lastProcessed: lastProcessedLabel,
-          totalPaid: data.length,
-        });
-      }
-    };
-
     fetchData();
   }, [token, payrolls.length]);
 
@@ -125,7 +124,7 @@ export default function PayrollAdminPage() {
 
       {/* Payroll Table */}
       <section className="border border-[var(--border-color)] bg-[var(--card-bg)] rounded-2xl p-4 shadow-sm">
-        <PayrollTable data={payrolls} role="ADMIN" />
+        <PayrollTable data={payrolls} role="ADMIN" onRefresh={fetchData} />
       </section>
     </main>
   );

@@ -66,7 +66,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
 
   // ---- Sidebar collapsible Insurance sublinks
-  const [insuranceOpen, setInsuranceOpen] = useState(false);
+  const [insuranCAOpen, setInsuranCAOpen] = useState(false);
 
   // Restore session
   useEffect(() => {
@@ -153,7 +153,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 label="Dashboard"
                 open={sidebarOpen}
               />
-              {(role === "ADMIN" || role === "HR") && (
+              {(role === "ADMIN" || role === "HR" || role === "MD" || role === "CAO") && (
                 <SidebarLink
                   href="/employees"
                   icon={<Users size={18} />}
@@ -175,11 +175,11 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               />
 
               {/* 🧾 Insurance section with sub-items */}
-              {(role === "ADMIN" || role === "HR") ? (
+              {(role === "ADMIN" || role === "HR" || role === "MD" || role === "CAO") ? (
                 <div className="space-y-1">
                   {/* Parent menu item */}
                   <button
-                    onClick={() => setInsuranceOpen(!insuranceOpen)}
+                    onClick={() => setInsuranCAOpen(!insuranCAOpen)}
                     className={`group flex items-center rounded-lg w-full transition-all duration-300 ${
                       sidebarOpen
                         ? "justify-start gap-1.75 px-3"
@@ -193,7 +193,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                       <>
                         <span>Insurance</span>
                         <span className="ml-auto">
-                          {insuranceOpen ? (
+                          {insuranCAOpen ? (
                             <ChevronUp size={14} />
                           ) : (
                             <ChevronDown size={14} />
@@ -206,7 +206,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                   {/* Submenu */}
                   <div
                     className={`transition-all duration-300 overflow-hidden ${
-                      insuranceOpen && sidebarOpen
+                      insuranCAOpen && sidebarOpen
                         ? "max-h-60 opacity-100"
                         : "max-h-0 opacity-0"
                     }`}
@@ -359,7 +359,15 @@ function Header({ role }: { role: string }) {
           Role: <strong>{role}</strong>
         </span>
         <div className="w-9 h-9 rounded-full border border-[var(--border-color)] flex items-center justify-center font-bold text-sm bg-blue-600 text-white shadow-sm">
-          {role?.toLowerCase() === "admin" ? "A" : role?.toLowerCase() === "hr" ? "H" : "E"}
+          {role?.toLowerCase() === "admin" 
+            ? "A" 
+            : role?.toLowerCase() === "hr" 
+            ? "H" 
+            : role?.toLowerCase() === "md"
+            ? "M"
+            : role?.toLowerCase() === "cao"
+            ? "C"
+            : "E"}
         </div>
       </div>
     </header>

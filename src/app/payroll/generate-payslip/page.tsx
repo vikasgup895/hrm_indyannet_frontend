@@ -304,7 +304,7 @@ export default function PayslipPage() {
 
       let monthRuns = runs.filter((r) => {
         const rm = runMonth(r);
-        console.log(`  - Run ${r.id}: periodEnd=${r.periodEnd}, month=${rm}`);
+        // console.log(`  - Run ${r.id}: periodEnd=${r.periodEnd}, month=${rm}`);
         return rm === targetMonth;
       });
 
@@ -389,7 +389,7 @@ export default function PayslipPage() {
           });
           run = refreshedRun.data || run;
           
-          console.log(`✅ Updated payroll run payDate to ${customPayDate}`);
+          // console.log(`✅ Updated payroll run payDate to ${customPayDate}`);
         } catch (updateErr) {
           console.error("Failed to update payroll run payDate:", updateErr);
           // Continue with existing date if update fails

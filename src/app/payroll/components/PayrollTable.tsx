@@ -12,8 +12,11 @@ import {
   CheckCircle,
   Clock,
   FileText,
+  Trash2,
 } from "lucide-react";
 import PayslipModal from "./PayslipModal";
+import { api } from "@/lib/api";
+import { useAuth } from "@/store/auth";
 
 /* STATUS BADGE */
 const StatusBadge = ({
@@ -72,11 +75,30 @@ const ActionButton = ({
 export default function PayrollTable({
   data,
   role,
+  onRefresh,
 }: {
   data: any[];
   role: string;
+  onRefresh?: () => void;
 }) {
   const [selected, setSelected] = useState<any>(null);
+  const { token } = useAuth();
+
+  const handleDelete = async (payslipId: string, employeeName: string) => {
+    if (!confirm(`Are you sure you want to delete the payslip for ${employeeName}?`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/payroll/payslips/${payslipId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert("Payslip deleted successfully");
+      if (onRefresh) onRefresh();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || "Failed to delete payslip");
+    }
+  };
 
   /* 🔥 Log the full payroll dataset once */
   useEffect(() => {
@@ -205,6 +227,21 @@ export default function PayrollTable({
                               </>
                             )}
                           </ActionButton>
+                          {(role === "ADMIN" || role === "HR" || role === "MD" || role === "CAO") && (
+                            <button
+                              onClick={() =>
+                                handleDelete(
+                                  row.id,
+                                  `${row.employee.firstName} ${row.employee.lastName}`
+                                )
+                              }
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-500 border border-red-500/40 hover:bg-red-500/20 transition-all duration-200"
+                              title="Delete Payslip"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

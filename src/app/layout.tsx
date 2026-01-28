@@ -77,12 +77,19 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!token) {
       if (pathname.startsWith("/dashboard")) router.replace("/login");
-      else if (pathname !== "/" && !pathname.startsWith("/login"))
+      else if (
+        pathname !== "/" && 
+        !pathname.startsWith("/login") &&
+        !pathname.startsWith("/forgot-password") &&
+        !pathname.startsWith("/reset-password")
+      ) {
         router.replace("/");
+      }
       return;
     }
-    if (pathname === "/" || pathname.startsWith("/login"))
+    if (pathname === "/" || pathname.startsWith("/login")) {
       router.replace("/dashboard");
+    }
   }, [pathname, token, router]);
 
   const handleLogout = () => {
@@ -91,7 +98,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const isLoginPage = pathname.startsWith("/login");
-  const isPublicPage = pathname === "/" || isLoginPage;
+  const isForgotPasswordPage = 
+    pathname.startsWith("/forgot-password") || 
+    pathname.startsWith("/reset-password");
+  const isPublicPage = pathname === "/" || isLoginPage || isForgotPasswordPage;
 
   if (isPublicPage && !token) {
     return (

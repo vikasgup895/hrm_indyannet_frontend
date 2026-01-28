@@ -5,10 +5,14 @@ export function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
   const { pathname } = req.nextUrl;
 
-  const isPublic = pathname === "/" || pathname.startsWith("/login");
+  const isPublic = 
+    pathname === "/" || 
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password");
 
   // 🔒 If logged in and trying to access public routes → go to dashboard
-  if (token && isPublic) {
+  if (token && (pathname === "/" || pathname.startsWith("/login"))) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 

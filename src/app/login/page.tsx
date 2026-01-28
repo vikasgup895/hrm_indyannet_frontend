@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/store/auth";
 import { api } from "@/lib/api";
 import { Eye, EyeOff, Shield, User, Lock, Mail } from "lucide-react";
@@ -114,12 +115,12 @@ export default function LoginPage() {
           {/* Remember Me & Forgot Password */}
           <div className="flex items-center justify-between text-sm">
             
-            <button
-              type="button"
+            <Link
+              href="/forgot-password"
               className="text-blue-500 hover:text-blue-400 transition-colors"
             >
               Forgot password?
-            </button>
+            </Link>
           </div>
 
           {/* Submit Button */}

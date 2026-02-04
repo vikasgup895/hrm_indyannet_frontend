@@ -1,0 +1,21 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/favicon.ico/route": "/favicon.ico",
+  "/forgot-password/page": "/forgot-password",
+  "/employees/page": "/employees",
+  "/insurance/ctc/page": "/insurance/ctc",
+  "/dashboard/page": "/dashboard",
+  "/insurance/convenience/page": "/insurance/convenience",
+  "/insurance/details/page": "/insurance/details",
+  "/leave/page": "/leave",
+  "/insurance/page": "/insurance",
+  "/page": "/",
+  "/insurance/increment/page": "/insurance/increment",
+  "/profile/page": "/profile",
+  "/payroll/page": "/payroll",
+  "/login/page": "/login",
+  "/payroll/generate-payslip/page": "/payroll/generate-payslip",
+  "/settings/page": "/settings",
+  "/reset-password/page": "/reset-password",
+  "/performance/page": "/performance"
+}

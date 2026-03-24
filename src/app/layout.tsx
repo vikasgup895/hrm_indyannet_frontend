@@ -18,6 +18,7 @@ import {
   Sun,
   Moon,
   ShieldCheck, // 🛡️ new icon for Insurance
+  ClipboardCheck,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -183,6 +184,15 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 label="Payroll"
                 open={sidebarOpen}
               />
+
+              {(role === "ADMIN" || role === "EMPLOYEE") && (
+                <SidebarLink
+                  href="/performance"
+                  icon={<ClipboardCheck size={18} />}
+                  label="Appraisal"
+                  open={sidebarOpen}
+                />
+              )}
 
               {/* 🧾 Insurance section with sub-items */}
               {(role === "ADMIN" || role === "HR" || role === "MD" || role === "CAO") ? (

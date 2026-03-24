@@ -22,7 +22,7 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/employees") ||
     pathname.startsWith("/leave") ||
     pathname.startsWith("/payroll") ||
-    // pathname.startsWith("/performance") ||
+    pathname.startsWith("/performance") ||
     pathname.startsWith("/profile") ||
     pathname.startsWith("/settings");
 

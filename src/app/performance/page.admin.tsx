@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import Link from "next/link";
+import StatusChip from "./components/StatusChip";
+import RatingBlock from "./components/RatingBlock";
+import { AppraisalRating, AppraisalStatus, RatingOption } from "./components/types";
 import {
   CheckCircle2,
   ClipboardList,
@@ -13,20 +16,6 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
-
-type AppraisalStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "IN_REVIEW"
-  | "VERIFIED"
-  | "FEEDBACK_SUBMITTED"
-  | "CLOSED"
-  | "REOPENED";
-
-type AppraisalRating =
-  | "BELOW_EXPECTATIONS"
-  | "MEETS_EXPECTATIONS"
-  | "EXCEEDS_EXPECTATIONS";
 
 type Cycle = {
   id: string;
@@ -111,35 +100,17 @@ type CreateCycleForm = {
   ratingSystem: string;
 };
 
-const ratingOptions: { label: string; value: AppraisalRating }[] = [
+const ratingOptions: RatingOption[] = [
   { label: "Below expectations", value: "BELOW_EXPECTATIONS" },
   { label: "Meets expectations", value: "MEETS_EXPECTATIONS" },
   { label: "Exceeds expectations", value: "EXCEEDS_EXPECTATIONS" },
 ];
-
-const statusTone: Record<AppraisalStatus, string> = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  SUBMITTED: "bg-amber-100 text-amber-800",
-  IN_REVIEW: "bg-indigo-100 text-indigo-800",
-  VERIFIED: "bg-emerald-100 text-emerald-800",
-  FEEDBACK_SUBMITTED: "bg-cyan-100 text-cyan-800",
-  CLOSED: "bg-zinc-200 text-zinc-800",
-  REOPENED: "bg-rose-100 text-rose-800",
-};
 
 function getErrorMessage(error: unknown, fallback: string) {
   const message = (error as { response?: { data?: { message?: string | string[] } } })
     ?.response?.data?.message;
   if (Array.isArray(message)) return message[0] || fallback;
   return message || fallback;
-}
-
-function StatusBadge({ status }: { status: AppraisalStatus }) {
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[status]}`}>
-      {status.replaceAll("_", " ")}
-    </span>
-  );
 }
 
 export default function PerformanceAdminPage() {
@@ -173,13 +144,13 @@ export default function PerformanceAdminPage() {
     return parts.length > 0 ? parts.join(" | ") : "All";
   }, [cycles, selectedCycleId, selectedStatus]);
 
-  const loadCycles = async () => {
+  const loadCycles = useCallback(async () => {
     const response = await api.get("/performance/admin/cycles");
     const data = response.data?.data || [];
     setCycles(data);
-  };
+  }, []);
 
-  const loadQueue = async () => {
+  const loadQueue = useCallback(async () => {
     const response = await api.get("/performance/admin/queue", {
       params: {
         cycleId: selectedCycleId || undefined,
@@ -188,7 +159,7 @@ export default function PerformanceAdminPage() {
       },
     });
     setQueue(response.data?.data || []);
-  };
+  }, [search, selectedCycleId, selectedStatus]);
 
   const loadDetail = async (id: string) => {
     const response = await api.get(`/performance/admin/${id}`);
@@ -206,7 +177,7 @@ export default function PerformanceAdminPage() {
     });
   };
 
-  const init = async () => {
+  const init = useCallback(async () => {
     try {
       setLoading(true);
       await loadCycles();
@@ -216,11 +187,11 @@ export default function PerformanceAdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadCycles, loadQueue]);
 
   useEffect(() => {
     void init();
-  }, []);
+  }, [init]);
 
   useEffect(() => {
     const refresh = async () => {
@@ -235,7 +206,7 @@ export default function PerformanceAdminPage() {
     };
 
     void refresh();
-  }, [selectedCycleId, selectedStatus]);
+  }, [loadQueue]);
 
   const openDetail = async (id: string) => {
     try {
@@ -541,7 +512,7 @@ export default function PerformanceAdminPage() {
                     <p className="font-semibold">
                       {item.employee.firstName} {item.employee.lastName}
                     </p>
-                    <StatusBadge status={item.status} />
+                    <StatusChip status={item.status} />
                   </div>
                   <p className="text-xs text-(--text-muted)">{item.employee.workEmail}</p>
                   <p className="text-xs text-(--text-muted)">
@@ -567,7 +538,7 @@ export default function PerformanceAdminPage() {
                   <p className="font-semibold">
                     {detail.employee.firstName} {detail.employee.lastName}
                   </p>
-                  <StatusBadge status={detail.status} />
+                  <StatusChip status={detail.status} />
                 </div>
                 <p>{detail.employee.workEmail}</p>
                 <p className="text-(--text-muted) text-xs mt-1">{detail.cycle.name}</p>
@@ -600,21 +571,15 @@ export default function PerformanceAdminPage() {
               <div className="rounded-lg border border-(--border-color) bg-(--background) p-3 space-y-3">
                 <p className="font-semibold text-sm">Admin Review</p>
 
-                <div className="grid gap-2 md:grid-cols-3 text-sm">
-                  {ratingOptions.map((option) => (
-                    <label key={option.value} className="inline-flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="overallRating"
-                        checked={reviewForm.overallRating === option.value}
-                        onChange={() =>
-                          setReviewForm((prev) => ({ ...prev, overallRating: option.value }))
-                        }
-                      />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
+                <RatingBlock
+                  name="overallRating"
+                  value={reviewForm.overallRating}
+                  options={ratingOptions}
+                  onChange={(value) =>
+                    setReviewForm((prev) => ({ ...prev, overallRating: value }))
+                  }
+                  className="grid gap-2 md:grid-cols-3 text-sm"
+                />
 
                 <textarea
                   value={reviewForm.adminReviewSummary || ""}
@@ -654,14 +619,17 @@ export default function PerformanceAdminPage() {
                   </button>
                   <button
                     onClick={reopen}
-                    disabled={actionBusy}
-                    className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-sm text-white"
+                    disabled={actionBusy || detail.status === "REOPENED" || detail.status === "CLOSED"}
+                    className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-sm text-white disabled:opacity-50"
                   >
                     <RotateCcw className="h-4 w-4" /> Reopen
                   </button>
                   <button
                     onClick={close}
-                    disabled={actionBusy || detail.status !== "FEEDBACK_SUBMITTED"}
+                    disabled={
+                      actionBusy ||
+                      !["FEEDBACK_SUBMITTED", "REOPENED"].includes(detail.status)
+                    }
                     className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-sm text-white disabled:opacity-50"
                   >
                     <XCircle className="h-4 w-4" /> Close

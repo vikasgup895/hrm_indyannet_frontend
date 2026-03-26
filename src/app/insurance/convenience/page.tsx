@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import { Coins, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { useAuth } from "@/store/auth";
 
 // Define TypeScript interfaces
@@ -39,6 +39,14 @@ interface GroupedCharges {
 
 export default function ConvenienceChargeApprovalsPage() {
   const { token } = useAuth();
+  const getErrorMessage = (err: unknown, fallback: string) => {
+    if (typeof err === "object" && err !== null) {
+      const maybeResponse = (err as { response?: { data?: { message?: string } } }).response;
+      if (maybeResponse?.data?.message) return maybeResponse.data.message;
+    }
+    return fallback;
+  };
+
   const [pendingCharges, setPendingCharges] = useState<ConvenienceCharge[]>([]);
   const [processedCharges, setProcessedCharges] = useState<ConvenienceCharge[]>(
     []
@@ -85,7 +93,7 @@ export default function ConvenienceChargeApprovalsPage() {
           ...(approvedRes.data || []),
           ...(rejectedRes.data || []),
         ]);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load charges:", err);
         alert("❌ Failed to load charges");
       } finally {
@@ -167,11 +175,9 @@ export default function ConvenienceChargeApprovalsPage() {
         ...(approvedRes.data || []),
         ...(rejectedRes.data || []),
       ]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Bulk action failed:", err);
-      alert(
-        "❌ Bulk action failed: " + (err.response?.data?.message || err.message)
-      );
+      alert("❌ Bulk action failed: " + getErrorMessage(err, "Unexpected error"));
     } finally {
       setProcessing(false);
     }

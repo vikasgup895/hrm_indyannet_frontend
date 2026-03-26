@@ -11,6 +11,14 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  const getErrorMessage = (err: unknown) => {
+    if (typeof err === 'object' && err !== null) {
+      const maybeResponse = (err as { response?: { data?: { message?: string } } }).response;
+      if (maybeResponse?.data?.message) return maybeResponse.data.message;
+    }
+    return 'Failed to process request';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -23,8 +31,8 @@ export default function ForgotPasswordPage() {
       setMessage(data.message);
       setSubmitted(true);
       setEmail('');
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to process request');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
       console.error('Error:', err);
     } finally {
       setLoading(false);

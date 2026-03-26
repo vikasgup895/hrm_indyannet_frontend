@@ -18,6 +18,14 @@ export function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const getErrorMessage = (err: unknown) => {
+    if (typeof err === 'object' && err !== null) {
+      const maybeResponse = (err as { response?: { data?: { message?: string } } }).response;
+      if (maybeResponse?.data?.message) return maybeResponse.data.message;
+    }
+    return 'Failed to reset password';
+  };
+
   useEffect(() => {
     if (!token) {
       setError('Invalid or missing reset token. Please request a new password reset.');
@@ -58,8 +66,8 @@ export function ResetPasswordForm() {
       setTimeout(() => {
         router.push('/login');
       }, 3000);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to reset password');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
       console.error('Error:', err);
     } finally {
       setLoading(false);

@@ -7,8 +7,6 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import PayrollCard from "./components/PayrollCard";
 
-import { downloadPayslipPDF } from "@/lib/payslip-pdf";
-
 export default function PayrollEmployeePage() {
   const { token } = useAuth();
   const [payslips, setPayslips] = useState<any[]>([]);
@@ -80,8 +78,9 @@ export default function PayrollEmployeePage() {
       };
 
   // 🧾 Generate PDF Payslip
-  const handleDownload = (p: any) => {
+  const handleDownload = async (p: any) => {
     if (!p) return alert("No payslip data found.");
+    const { downloadPayslipPDF } = await import("@/lib/payslip-pdf");
     // Pass detailed data object to match full design
     downloadPayslipPDF(null, {
       // Prefer personNo (starts with EMP) for display and filename

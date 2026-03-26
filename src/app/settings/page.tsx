@@ -1,8 +1,10 @@
 "use client";
 
 import { useAuth } from "@/store/auth";
-import SettingsAdminPage from "./page.admin";
-import SettingsEmployeePage from "./page.employee";
+import dynamic from "next/dynamic";
+
+const SettingsAdminPage = dynamic(() => import("./page.admin"));
+const SettingsEmployeePage = dynamic(() => import("./page.employee"));
 
 export default function SettingsPage() {
   const { role } = useAuth();

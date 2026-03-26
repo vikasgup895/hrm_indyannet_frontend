@@ -1,30 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import {
+  ArrowRight,
   CheckCircle2,
   ClipboardList,
   Loader2,
   Save,
   Send,
   Target,
-  Trash2,
 } from "lucide-react";
-
-type AppraisalStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "IN_REVIEW"
-  | "VERIFIED"
-  | "FEEDBACK_SUBMITTED"
-  | "CLOSED"
-  | "REOPENED";
-
-type AppraisalRating =
-  | "BELOW_EXPECTATIONS"
-  | "MEETS_EXPECTATIONS"
-  | "EXCEEDS_EXPECTATIONS";
+import StatusChip from "./components/StatusChip";
+import RatingBlock from "./components/RatingBlock";
+import GoalRow from "./components/GoalRow";
+import DevelopmentRow from "./components/DevelopmentRow";
+import {
+  AppraisalRating,
+  AppraisalStatus,
+  DevelopmentInputRow,
+  GoalInputRow,
+  RatingOption,
+} from "./components/types";
 
 type CycleItem = {
   id: string;
@@ -40,19 +37,6 @@ type CycleItem = {
   } | null;
 };
 
-type Goal = {
-  title: string;
-  metric?: string;
-  targetDate?: string;
-};
-
-type DevPlan = {
-  goal: string;
-  activities: string;
-  timeline?: string;
-  resources?: string;
-};
-
 type FormState = {
   jobRoleSkillsRating?: AppraisalRating;
   jobRoleSkillsComments?: string;
@@ -64,27 +48,19 @@ type FormState = {
   areasForImprovement?: string;
   employeeChallenges?: string;
   employeeImprovePlan?: string;
-  goals: Goal[];
-  developmentPlans: DevPlan[];
+  goals: GoalInputRow[];
+  developmentPlans: DevelopmentInputRow[];
   employeeFeedback?: string;
   finalAgreements?: string;
+  adminReviewSummary?: string;
+  adminVerificationNotes?: string;
 };
 
-const ratingOptions: { label: string; value: AppraisalRating }[] = [
+const ratingOptions: RatingOption[] = [
   { label: "Below expectations", value: "BELOW_EXPECTATIONS" },
   { label: "Meets expectations", value: "MEETS_EXPECTATIONS" },
   { label: "Exceeds expectations", value: "EXCEEDS_EXPECTATIONS" },
 ];
-
-const statusTone: Record<AppraisalStatus, string> = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  SUBMITTED: "bg-amber-100 text-amber-800",
-  IN_REVIEW: "bg-indigo-100 text-indigo-800",
-  VERIFIED: "bg-emerald-100 text-emerald-800",
-  FEEDBACK_SUBMITTED: "bg-cyan-100 text-cyan-800",
-  CLOSED: "bg-zinc-200 text-zinc-800",
-  REOPENED: "bg-rose-100 text-rose-800",
-};
 
 function getErrorMessage(error: unknown, fallback: string) {
   const message = (error as { response?: { data?: { message?: string | string[] } } })
@@ -93,17 +69,9 @@ function getErrorMessage(error: unknown, fallback: string) {
   return message || fallback;
 }
 
-function StatusBadge({ status }: { status: AppraisalStatus }) {
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[status]}`}>
-      {status.replaceAll("_", " ")}
-    </span>
-  );
-}
-
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-(--border-color) bg-(--card-bg) p-4 md:p-6">
+    <section className="rounded-xl border border-(--border-color) bg-(--card-bg) p-4 md:p-6 shadow-sm">
       <h3 className="mb-4 text-base font-semibold text-(--text-primary)">{title}</h3>
       {children}
     </section>
@@ -130,7 +98,7 @@ function TextArea({
       placeholder={placeholder}
       rows={rows}
       disabled={disabled}
-      className="w-full resize-y rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm text-(--text-primary)"
+      className="w-full resize-y rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm text-(--text-primary) placeholder:text-(--text-muted) focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-80"
     />
   );
 }
@@ -159,7 +127,54 @@ export default function PerformanceEmployeePage() {
   const canSubmitDraft = !!appraisalId && (status === "DRAFT" || status === "REOPENED");
   const canSubmitFeedback = !!appraisalId && status === "VERIFIED";
 
-  const loadCycles = async () => {
+  const lifecycleSteps: AppraisalStatus[] = [
+    "DRAFT",
+    "SUBMITTED",
+    "IN_REVIEW",
+    "VERIFIED",
+    "FEEDBACK_SUBMITTED",
+    "CLOSED",
+  ];
+
+  const stepStatus = status === "REOPENED" || status === null ? "DRAFT" : status;
+  const currentStepIndex = Math.max(0, lifecycleSteps.indexOf(stepStatus));
+
+  const filledGoals = useMemo(
+    () => form.goals.filter((goal) => goal.title.trim().length > 0).length,
+    [form.goals],
+  );
+
+  const filledPlans = useMemo(
+    () =>
+      form.developmentPlans.filter(
+        (plan) => plan.goal.trim().length > 0 && plan.activities.trim().length > 0,
+      ).length,
+    [form.developmentPlans],
+  );
+
+  const statusHelp = useMemo(() => {
+    switch (status) {
+      case "DRAFT":
+      case null:
+        return "Complete your self-review, save draft anytime, and submit when ready.";
+      case "SUBMITTED":
+        return "Submitted to admin. You can view progress while admin reviews.";
+      case "IN_REVIEW":
+        return "Admin is reviewing and adding evaluation notes.";
+      case "VERIFIED":
+        return "Admin review is complete. Please submit your final feedback.";
+      case "FEEDBACK_SUBMITTED":
+        return "Final feedback submitted. Awaiting formal closure.";
+      case "REOPENED":
+        return "Admin reopened this appraisal. Update details and resubmit.";
+      case "CLOSED":
+        return "This appraisal cycle is closed and read-only.";
+      default:
+        return "Track your appraisal lifecycle and complete required actions.";
+    }
+  }, [status]);
+
+  const loadCycles = useCallback(async () => {
     const response = await api.get("/performance/my/cycles");
     const data: CycleItem[] = response.data?.data || [];
     setCycles(data);
@@ -168,7 +183,7 @@ export default function PerformanceEmployeePage() {
       const active = data.find((item) => item.isActive);
       setSelectedCycleId(active?.id || data[0].id);
     }
-  };
+  }, [selectedCycleId]);
 
   const loadCycleAppraisal = async (cycleId: string) => {
     const response = await api.get(`/performance/my/${cycleId}`);
@@ -199,7 +214,7 @@ export default function PerformanceEmployeePage() {
       employeeImprovePlan: appraisal.employeeImprovePlan || "",
       goals:
         appraisal.goals?.length > 0
-          ? appraisal.goals.map((goal: any) => ({
+          ? appraisal.goals.map((goal: { title?: string; metric?: string; targetDate?: string }) => ({
               title: goal.title || "",
               metric: goal.metric || "",
               targetDate: goal.targetDate
@@ -209,7 +224,7 @@ export default function PerformanceEmployeePage() {
           : [{ title: "", metric: "", targetDate: "" }],
       developmentPlans:
         appraisal.developmentPlans?.length > 0
-          ? appraisal.developmentPlans.map((plan: any) => ({
+          ? appraisal.developmentPlans.map((plan: { goal?: string; activities?: string; timeline?: string; resources?: string }) => ({
               goal: plan.goal || "",
               activities: plan.activities || "",
               timeline: plan.timeline || "",
@@ -218,6 +233,8 @@ export default function PerformanceEmployeePage() {
           : [{ goal: "", activities: "", timeline: "", resources: "" }],
       employeeFeedback: appraisal.employeeFeedback || "",
       finalAgreements: appraisal.finalAgreements || "",
+      adminReviewSummary: appraisal.adminReviewSummary || "",
+      adminVerificationNotes: appraisal.adminVerificationNotes || "",
     });
   };
 
@@ -234,7 +251,7 @@ export default function PerformanceEmployeePage() {
     };
 
     void init();
-  }, []);
+  }, [loadCycles]);
 
   useEffect(() => {
     if (!selectedCycleId) return;
@@ -318,13 +335,13 @@ export default function PerformanceEmployeePage() {
     }
   };
 
-  const updateGoal = (index: number, key: keyof Goal, value: string) => {
+  const updateGoal = (index: number, key: keyof GoalInputRow, value: string) => {
     const next = [...form.goals];
     next[index] = { ...next[index], [key]: value };
     setForm((prev) => ({ ...prev, goals: next }));
   };
 
-  const updatePlan = (index: number, key: keyof DevPlan, value: string) => {
+  const updatePlan = (index: number, key: keyof DevelopmentInputRow, value: string) => {
     const next = [...form.developmentPlans];
     next[index] = { ...next[index], [key]: value };
     setForm((prev) => ({ ...prev, developmentPlans: next }));
@@ -365,7 +382,52 @@ export default function PerformanceEmployeePage() {
           <h1 className="inline-flex items-center gap-2 text-2xl font-bold">
             <ClipboardList className="h-6 w-6 text-blue-600" /> Annual Performance Appraisal
           </h1>
-          {status && <StatusBadge status={status} />}
+          {status && <StatusChip status={status} />}
+        </div>
+
+        <div className="mb-4 rounded-lg border border-(--border-color) bg-(--background) px-3 py-3 text-sm text-(--text-primary)">
+          <p className="font-medium">What to do now</p>
+          <p className="mt-1 text-(--text-primary)">{statusHelp}</p>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-(--border-color) bg-(--background) p-3">
+          <p className="mb-2 text-xs font-semibold text-(--text-muted)">Appraisal Lifecycle</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {lifecycleSteps.map((item, index) => {
+              const isDone = index < currentStepIndex;
+              const isCurrent = index === currentStepIndex;
+              return (
+                <div key={item} className="inline-flex items-center gap-2">
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-center text-xs font-medium ${
+                      isCurrent
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : isDone
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                          : "border-(--border-color) bg-(--card-bg) text-(--text-muted)"
+                    }`}
+                  >
+                    {item.replaceAll("_", " ")}
+                  </div>
+
+                  {index < lifecycleSteps.length - 1 && (
+                    <ArrowRight
+                      className={`h-4 w-4 ${
+                        index < currentStepIndex
+                          ? "text-emerald-500"
+                          : "text-(--text-muted)"
+                      }`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {status === "REOPENED" && (
+            <p className="mt-2 text-xs text-amber-600">
+              Reopened means this cycle returned to editable draft stage.
+            </p>
+          )}
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
@@ -401,25 +463,42 @@ export default function PerformanceEmployeePage() {
             <p className="text-xs text-(--text-muted) mt-1">
               {selectedCycle?.ratingSystem || "Rating: Below / Meets / Exceeds Expectations"}
             </p>
+            <p className="text-xs text-(--text-muted)">
+              Last updated: {selectedCycle?.appraisal?.updatedAt
+                ? new Date(selectedCycle.appraisal.updatedAt).toLocaleString()
+                : "Not started"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm">
+            <p className="text-xs text-(--text-muted)">Goals added</p>
+            <p className="font-semibold">{filledGoals}</p>
+          </div>
+          <div className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm">
+            <p className="text-xs text-(--text-muted)">Development plans</p>
+            <p className="font-semibold">{filledPlans}</p>
+          </div>
+          <div className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm">
+            <p className="text-xs text-(--text-muted)">Draft editable</p>
+            <p className="font-semibold">{isDraftEditable ? "Yes" : "No"}</p>
+          </div>
+          <div className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm">
+            <p className="text-xs text-(--text-muted)">Feedback required</p>
+            <p className="font-semibold">{canSubmitFeedback ? "Yes" : "No"}</p>
           </div>
         </div>
       </section>
 
       <SectionCard title="Job Role and Skills">
-        <div className="grid gap-3 md:grid-cols-3">
-          {ratingOptions.map((option) => (
-            <label key={option.value} className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="jobRoleSkillsRating"
-                checked={form.jobRoleSkillsRating === option.value}
-                disabled={!isDraftEditable}
-                onChange={() => setForm((prev) => ({ ...prev, jobRoleSkillsRating: option.value }))}
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
+        <RatingBlock
+          name="jobRoleSkillsRating"
+          value={form.jobRoleSkillsRating}
+          options={ratingOptions}
+          disabled={!isDraftEditable}
+          onChange={(value) => setForm((prev) => ({ ...prev, jobRoleSkillsRating: value }))}
+        />
         <div className="mt-3">
           <TextArea
             value={form.jobRoleSkillsComments}
@@ -431,20 +510,13 @@ export default function PerformanceEmployeePage() {
       </SectionCard>
 
       <SectionCard title="Work Quality">
-        <div className="grid gap-3 md:grid-cols-3">
-          {ratingOptions.map((option) => (
-            <label key={option.value} className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="workQualityRating"
-                checked={form.workQualityRating === option.value}
-                disabled={!isDraftEditable}
-                onChange={() => setForm((prev) => ({ ...prev, workQualityRating: option.value }))}
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
+        <RatingBlock
+          name="workQualityRating"
+          value={form.workQualityRating}
+          options={ratingOptions}
+          disabled={!isDraftEditable}
+          onChange={(value) => setForm((prev) => ({ ...prev, workQualityRating: value }))}
+        />
         <div className="mt-3">
           <TextArea
             value={form.workQualityComments}
@@ -456,20 +528,13 @@ export default function PerformanceEmployeePage() {
       </SectionCard>
 
       <SectionCard title="Overall Performance">
-        <div className="grid gap-3 md:grid-cols-3">
-          {ratingOptions.map((option) => (
-            <label key={option.value} className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="overallRating"
-                checked={form.overallRating === option.value}
-                disabled={!isDraftEditable}
-                onChange={() => setForm((prev) => ({ ...prev, overallRating: option.value }))}
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
+        <RatingBlock
+          name="overallRating"
+          value={form.overallRating}
+          options={ratingOptions}
+          disabled={!isDraftEditable}
+          onChange={(value) => setForm((prev) => ({ ...prev, overallRating: value }))}
+        />
         <div className="mt-3">
           <TextArea
             value={form.overallComments}
@@ -521,43 +586,15 @@ export default function PerformanceEmployeePage() {
       <SectionCard title="Goals For Next Year">
         <div className="space-y-3">
           {form.goals.map((goal, index) => (
-            <div key={`goal-${index}`} className="space-y-2">
-              <div className="grid gap-2 md:grid-cols-3">
-                <input
-                  value={goal.title}
-                  disabled={!isDraftEditable}
-                  onChange={(e) => updateGoal(index, "title", e.target.value)}
-                  placeholder="Goal"
-                  className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm"
-                />
-                <input
-                  value={goal.metric || ""}
-                  disabled={!isDraftEditable}
-                  onChange={(e) => updateGoal(index, "metric", e.target.value)}
-                  placeholder="Metric / Measure"
-                  className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  value={goal.targetDate || ""}
-                  disabled={!isDraftEditable}
-                  onChange={(e) => updateGoal(index, "targetDate", e.target.value)}
-                  className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm"
-                />
-              </div>
-              {isDraftEditable && form.goals.length > 1 && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => removeGoal(index)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                    aria-label={`Delete goal row ${index + 1}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" /> Delete Row
-                  </button>
-                </div>
-              )}
-            </div>
+            <GoalRow
+              key={`goal-${index}`}
+              row={goal}
+              index={index}
+              editable={isDraftEditable}
+              canDelete={form.goals.length > 1}
+              onChange={updateGoal}
+              onDelete={removeGoal}
+            />
           ))}
           {isDraftEditable && (
             <button
@@ -578,50 +615,15 @@ export default function PerformanceEmployeePage() {
       <SectionCard title="Development Plan">
         <div className="space-y-3">
           {form.developmentPlans.map((plan, index) => (
-            <div key={`plan-${index}`} className="space-y-2">
-              <div className="grid gap-2 md:grid-cols-4">
-                <input
-                  value={plan.goal}
-                  disabled={!isDraftEditable}
-                  onChange={(e) => updatePlan(index, "goal", e.target.value)}
-                  placeholder="Goal"
-                  className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm"
-                />
-                <input
-                  value={plan.activities}
-                  disabled={!isDraftEditable}
-                  onChange={(e) => updatePlan(index, "activities", e.target.value)}
-                  placeholder="Development Activities"
-                  className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm"
-                />
-                <input
-                  value={plan.timeline || ""}
-                  disabled={!isDraftEditable}
-                  onChange={(e) => updatePlan(index, "timeline", e.target.value)}
-                  placeholder="Timeline"
-                  className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm"
-                />
-                <input
-                  value={plan.resources || ""}
-                  disabled={!isDraftEditable}
-                  onChange={(e) => updatePlan(index, "resources", e.target.value)}
-                  placeholder="Resources / Support"
-                  className="rounded-lg border border-(--border-color) bg-(--background) px-3 py-2 text-sm"
-                />
-              </div>
-              {isDraftEditable && form.developmentPlans.length > 1 && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => removePlan(index)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                    aria-label={`Delete development row ${index + 1}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" /> Delete Row
-                  </button>
-                </div>
-              )}
-            </div>
+            <DevelopmentRow
+              key={`plan-${index}`}
+              row={plan}
+              index={index}
+              editable={isDraftEditable}
+              canDelete={form.developmentPlans.length > 1}
+              onChange={updatePlan}
+              onDelete={removePlan}
+            />
           ))}
           {isDraftEditable && (
             <button
@@ -641,6 +643,33 @@ export default function PerformanceEmployeePage() {
           )}
         </div>
       </SectionCard>
+
+      {(form.adminReviewSummary || form.adminVerificationNotes || ["IN_REVIEW", "VERIFIED", "FEEDBACK_SUBMITTED", "REOPENED", "CLOSED"].includes(status || "")) && (
+        <SectionCard title="Admin Review and Verification">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-(--text-muted)">Admin review summary</label>
+              <TextArea
+                value={form.adminReviewSummary}
+                onChange={() => {}}
+                disabled
+                rows={4}
+                placeholder="Admin has not added a review summary yet"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-(--text-muted)">Verification notes</label>
+              <TextArea
+                value={form.adminVerificationNotes}
+                onChange={() => {}}
+                disabled
+                rows={4}
+                placeholder="Admin has not added verification notes yet"
+              />
+            </div>
+          </div>
+        </SectionCard>
+      )}
 
       {canSubmitFeedback && (
         <SectionCard title="Final Feedback After Admin Review">
@@ -674,7 +703,13 @@ export default function PerformanceEmployeePage() {
       )}
 
       <section className="sticky bottom-3 z-10 rounded-xl border border-(--border-color) bg-(--card-bg) p-3 shadow-md">
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="inline-flex items-center gap-2 rounded-lg bg-(--background) px-3 py-2 text-xs text-(--text-muted)">
+            <Target className="h-4 w-4" />
+            {status ? `Current status: ${status.replaceAll("_", " ")}` : "Not submitted yet"}
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2">
           <button
             onClick={saveDraft}
             disabled={!selectedCycleId || !isDraftEditable || saving}
@@ -691,10 +726,6 @@ export default function PerformanceEmployeePage() {
           >
             <Send className="h-4 w-4" /> Submit To Admin
           </button>
-
-          <div className="inline-flex items-center gap-2 rounded-lg bg-(--background) px-3 py-2 text-xs text-(--text-muted)">
-            <Target className="h-4 w-4" />
-            {status ? `Current status: ${status.replaceAll("_", " ")}` : "Not submitted yet"}
           </div>
         </div>
       </section>

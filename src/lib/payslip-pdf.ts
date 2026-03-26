@@ -5,8 +5,6 @@
    - Creates high-quality A4 PDF with html2canvas + jsPDF
 */
 
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import logo from "@/assets/logo.jpg";
 
 /* ---------- Type Definitions ---------- */
@@ -163,7 +161,7 @@ function buildPayslipHTML(data: PayslipData) {
         year: "numeric",
       });
     if (!v) return fmt(new Date());
-    const direct = new Date(v as any);
+    const direct = new Date(v);
     if (!isNaN(direct.getTime())) return fmt(direct);
     // Try parse formats like dd/MM/YYYY or dd-MM-YYYY
     const m = String(v).match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
@@ -178,10 +176,6 @@ function buildPayslipHTML(data: PayslipData) {
     // Fallback: if unparseable or literal "Invalid Date", use today's date
     return fmt(new Date());
   })();
-
-  const pf =
-    data.pfNumber || data.employee?.bankDetail?.pfNumber || "Not Available";
-  const uan = data.uan || data.employee?.bankDetail?.uan || "Not Available";
 
   const earnings = data.earnings || {
     Basic: data.gross ? Number(data.gross) * 0.7 : 0,
@@ -402,6 +396,11 @@ export async function downloadPayslipPDF(
   fileNameOrData?: string | PayslipData
 ) {
   try {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
+
     let htmlSource: string | null = null;
 
     const data =

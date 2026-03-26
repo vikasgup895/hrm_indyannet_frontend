@@ -4,7 +4,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
-import { useTheme } from "@/context/ThemeProvider";
 
 import {
   User,
@@ -17,10 +16,8 @@ import {
   FileDigit,
   Wallet,
   Users,
-  Activity,
   Copy,
   CheckCircle2,
-  Clock,
   Edit3,
   X,
   Save,
@@ -124,6 +121,8 @@ const InputField = React.memo((props: any) => {
   );
 });
 
+InputField.displayName = "InputField";
+
 /* =========================================================================
    CARD INFO COMPONENT - IMPROVED
    ========================================================================= */
@@ -194,8 +193,7 @@ function CardInfo({
    PAGE COMPONENT
    ========================================================================= */
 export default function EmployeesEmployeePage() {
-  const { token, role } = useAuth();
-  const { theme } = useTheme();
+  const { token } = useAuth();
 
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -309,7 +307,7 @@ export default function EmployeesEmployeePage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await api.post(`/employees/${profile!.id}/upload`, formData, {
+      await api.post(`/employees/${profile!.id}/upload`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

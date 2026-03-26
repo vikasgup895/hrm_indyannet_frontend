@@ -7,7 +7,6 @@ import {
   CalendarDays,
   ClipboardList,
   FilePlus2,
-  RefreshCcw,
   Undo2,
   UserPlus,
   X,
@@ -51,8 +50,6 @@ type HistoryItem = {
   createdAt: string;
   notes?: string;
 };
-
-const fmtDate = (iso?: string) => (iso ? new Date(iso).toLocaleString() : "—");
 
 // 🧩 Modal Component
 function Modal({
@@ -98,10 +95,10 @@ export default function LeaveAdminPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
 
   const [assignData, setAssignData] = useState<Record<string, number>>({});
-  const [allowCarryForward, setAllowCarryForward] = useState(false);
-  const [allowEncashment, setAllowEncashment] = useState(false);
-  const [validFrom, setValidFrom] = useState("");
-  const [validUntil, setValidUntil] = useState("");
+  const [allowCarryForward] = useState(false);
+  const [allowEncashment] = useState(false);
+  const [validFrom] = useState("");
+  const [validUntil] = useState("");
   const [notifyEmployee, setNotifyEmployee] = useState(true);
 
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -109,9 +106,8 @@ export default function LeaveAdminPage() {
     string | null
   >(null);
 
-  const [balances, setBalances] = useState<BalanceSummary[]>([]);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [csvBusy, setCsvBusy] = useState(false);
+  const [, setBalances] = useState<BalanceSummary[]>([]);
+  const [, setHistory] = useState<HistoryItem[]>([]);
 
   // Fetch employees & leave policies
   useEffect(() => {
@@ -161,7 +157,7 @@ export default function LeaveAdminPage() {
   const payload = useMemo(
     () =>
       Object.entries(assignData)
-        .filter(([_, days]) => Number(days) > 0)
+        .filter(([, days]) => Number(days) > 0)
         .map(([policyId, days]) => ({
           employeeId: selectedEmployee,
           policyId,

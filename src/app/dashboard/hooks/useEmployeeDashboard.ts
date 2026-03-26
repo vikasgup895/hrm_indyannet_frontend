@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";

@@ -13,7 +13,6 @@ import {
   Calculator,
   ArrowDownToLine,
 } from "lucide-react";
-import { downloadPayslipPDF } from "@/lib/payslip-pdf";
 
 export default function PayslipModal({
   data,
@@ -59,8 +58,9 @@ export default function PayslipModal({
 
   // 🧾 Download PDF (Full Layout)
   // 🧾 Download PDF (Full Layout)
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (!data) return alert("No payslip data found.");
+    const { downloadPayslipPDF } = await import("@/lib/payslip-pdf");
 
     downloadPayslipPDF(null, {
       // Prefer Employee Number (EMP...) so filename uses EMP instead of name
@@ -383,6 +383,7 @@ function Box({ icon: Icon, label, value, sub }: any) {
   return (
     <div className="bg-(--background) border border-(--border-color) p-4 rounded-xl">
       <Icon className="w-5 h-5 text-blue-500 mb-1" />
+      <p className="text-xs text-(--text-muted)">{label}</p>
       <p className="font-semibold">{value}</p>
       {sub && <p className="text-sm text-(--text-muted)">{sub}</p>}
     </div>

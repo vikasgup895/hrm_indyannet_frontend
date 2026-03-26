@@ -8,7 +8,7 @@ export default function PerformancePage() {
   const { role } = useAuth();
 
   if (role === "ADMIN") return <PerformanceAdminPage />;
-  if (role === "EMPLOYEE") return <PerformanceEmployeePage />;
+  if (role === "EMPLOYEE" || role === "HR") return <PerformanceEmployeePage />;
 
   return (
     <div className="flex items-center justify-center h-full text-gray-500">

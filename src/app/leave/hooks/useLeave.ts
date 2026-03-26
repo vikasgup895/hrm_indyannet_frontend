@@ -2,7 +2,6 @@
 
 import useSWR from "swr";
 import { api } from "@/lib/api";
-import { useAuth } from "@/store/auth";
 
 /************************************
  * Shared fetcher using global api
@@ -39,8 +38,6 @@ export function useLeave(role: string, token?: string) {
  * ✍️ useCreateLeave — create request
  ************************************/
 export function useCreateLeave() {
-  const { token } = useAuth();
-
   const createLeave = async (leaveData: {
     policyId: string;
     startDate: string;

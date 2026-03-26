@@ -1,8 +1,10 @@
 "use client";
 
 import { useAuth } from "@/store/auth";
-import PayrollAdminPage from "./page.admin";
-import PayrollEmployeePage from "./page.employee";
+import dynamic from "next/dynamic";
+
+const PayrollAdminPage = dynamic(() => import("./page.admin"));
+const PayrollEmployeePage = dynamic(() => import("./page.employee"));
 
 export default function PayrollPage() {
   const { role } = useAuth();

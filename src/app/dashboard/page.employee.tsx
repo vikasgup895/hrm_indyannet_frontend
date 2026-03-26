@@ -15,11 +15,9 @@ import {
   Activity,
 } from "lucide-react";
 import { useEmployeeDashboard } from "./hooks/useEmployeeDashboard";
-import { useTheme } from "@/context/ThemeProvider"; // ✅ added for global theme
 
 export default function DashboardEmployee() {
   const { employeeDashboard, isLoading, error } = useEmployeeDashboard();
-  const { theme } = useTheme(); // ✅ now theme-aware
 
   if (isLoading)
     return (

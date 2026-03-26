@@ -22,16 +22,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider, useTheme } from "@/context/ThemeProvider";
-
-// ---- Fonts
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 // ---- Helper: strip /hrm (basePath) from pathname for comparisons
 function useNormalizedPathname() {
@@ -108,7 +100,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <html lang="en" className={theme === "dark" ? "dark" : ""}>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)] transition-colors`}
+          className="antialiased bg-[var(--background)] text-[var(--foreground)] transition-colors"
         >
           {children}
         </body>
@@ -119,7 +111,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={theme === "dark" ? "dark" : ""}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300`}
+        className="antialiased bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300"
       >
         <div className="flex h-screen w-full bg-[var(--background)] text-[var(--foreground)]">
           {/* Sidebar */}
@@ -185,7 +177,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 open={sidebarOpen}
               />
 
-              {(role === "ADMIN" || role === "EMPLOYEE") && (
+              {(role === "ADMIN" || role === "EMPLOYEE" || role === "HR") && (
                 <SidebarLink
                   href="/performance"
                   icon={<ClipboardCheck size={18} />}

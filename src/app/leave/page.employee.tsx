@@ -13,7 +13,6 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useTheme } from "@/context/ThemeProvider"; // ✅ added
 
 /***********************
  * Helpers & Modal
@@ -77,7 +76,6 @@ type LeavePolicy = {
  * Employee Page
  ***********************/
 export default function LeaveEmployeePage() {
-  const { theme } = useTheme(); // ✅ integrate with global theme
   const [policies, setPolicies] = useState<LeavePolicy[]>([]);
   const [balances, setBalances] = useState<BalanceSummary[]>([]);
   const [myRequests, setMyRequests] = useState<any[]>([]);

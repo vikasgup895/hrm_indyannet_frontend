@@ -561,15 +561,12 @@
 
 import { useState, useEffect } from "react";
 import {
-  Plus,
   Search,
   Users,
   X,
   ChevronDown,
   ChevronUp,
   UserPlus,
-  Building2,
-  Briefcase,
   UserCheck,
   GraduationCap,
   Mail,
@@ -580,9 +577,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
-import { useTheme } from "@/context/ThemeProvider";
 import React from "react";
-import { get } from "http";
 import EmployeeDetailsModal from "./components/EmployeeDetailsModal";
 
 /* -------------------------------------------
@@ -710,7 +705,6 @@ const StatsCard = ({ icon: Icon, label, value, change, trend }: any) => (
    Main Component
 -------------------------------------------- */
 export default function EmployeesAdminPage() {
-  const { theme } = useTheme();
   const { token, role } = useAuth();
 
   const [search, setSearch] = useState("");
@@ -821,7 +815,7 @@ export default function EmployeesAdminPage() {
 
       // 🔥 CHECK IF EDIT MODE
       if (editingEmployee) {
-        const res = await api.put(
+        await api.put(
           `/employees/${editingEmployee.id}`,
           employeeData,
           {
@@ -902,7 +896,7 @@ export default function EmployeesAdminPage() {
 
     try {
       // call existing update endpoint (PUT /employees/:id) to update only the status
-      const res = await api.put(
+      await api.put(
         `/employees/${employeeId}`,
         { status: "Inactive" },
         { headers: { Authorization: `Bearer ${token}` } }

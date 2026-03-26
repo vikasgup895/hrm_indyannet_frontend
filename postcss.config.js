@@ -1,7 +1,9 @@
 // ✅ Tailwind v4 uses @tailwindcss/postcss
-export default {
+const config = {
   plugins: {
     "@tailwindcss/postcss": {},
     autoprefixer: {},
   },
 };
+
+export default config;

@@ -4,9 +4,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/store/auth";
 import { api } from "@/lib/api";
-import { Eye, EyeOff, Shield, User, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Shield, Lock, Mail } from "lucide-react";
 import logo from "@/assets/logo.jpg";
 
 export default function LoginPage() {
@@ -21,7 +22,7 @@ export default function LoginPage() {
   useEffect(() => {
     load();
     if (token) router.push("/dashboard");
-  }, [token]);
+  }, [load, router, token]);
 
   
 
@@ -52,7 +53,7 @@ export default function LoginPage() {
         {/* Header Section */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 ">
-            <img src={logo.src} alt="Indyanet HRM Logo" className="w-8 h-8" />
+            <Image src={logo} alt="Indyanet HRM Logo" width={32} height={32} className="w-8 h-8" />
           </div>
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-[var(--text-muted)]">

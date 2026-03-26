@@ -5,13 +5,8 @@ import { useState, useEffect } from "react";
 import {
   Eye,
   CreditCard,
-  User,
-  Building,
-  Calendar,
-  DollarSign,
   CheckCircle,
   Clock,
-  FileText,
   Trash2,
 } from "lucide-react";
 import PayslipModal from "./PayslipModal";

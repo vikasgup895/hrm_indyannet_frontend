@@ -174,7 +174,7 @@ export const useAuth = create<AuthState>((set, get) => ({
         get().logout();
         return false;
       }
-    } catch (err) {
+    } catch {
       console.warn("❌ Token validation failed, logging out");
       get().logout();
       return false;

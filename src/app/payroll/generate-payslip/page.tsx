@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { downloadPayslipPDF } from "@/lib/payslip-pdf";
 import logo from "@/assets/logo.jpg";
 import { useAuth } from "@/store/auth";
 import {
@@ -14,8 +13,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import Image from "next/image";
 
 /* ───────────────────────────────── Types ───────────────────────────────── */
 type BasicEmployee = {
@@ -154,7 +152,6 @@ export default function PayslipPage() {
   });
 
   const [emp, setEmp] = useState<FullEmployee | null>(null);
-  const [loadingEmp, setLoadingEmp] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
 
   const [showSlip, setShowSlip] = useState(false);
@@ -223,12 +220,11 @@ export default function PayslipPage() {
         setLoadingList(false);
       }
     })();
-  }, [token]);
+  }, [selectedEmployeeId, token]);
 
-  const fetchEmployee = async (id: string) => {
+  const fetchEmployee = useCallback(async (id: string) => {
     if (!id || !token) return;
     try {
-      setLoadingEmp(true);
       const res = await api.get(`/employees/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -236,14 +232,12 @@ export default function PayslipPage() {
     } catch (e) {
       console.error("Failed to load employee:", e);
       setEmp(null);
-    } finally {
-      setLoadingEmp(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (selectedEmployeeId) fetchEmployee(selectedEmployeeId);
-  }, [selectedEmployeeId]);
+  }, [fetchEmployee, selectedEmployeeId]);
 
   /* ───────────────────────────── Calculations ───────────────────────────── */
   const grossEarnings = useMemo(
@@ -487,8 +481,9 @@ export default function PayslipPage() {
   //   pdf.save(fileName);
   // };
   // 🧾 Download Payslip PDF (Full Screenshot-Matching Layout)
-  const onDownloadPdf = () => {
+  const onDownloadPdf = async () => {
     if (!emp) return alert("No employee selected.");
+    const { downloadPayslipPDF } = await import("@/lib/payslip-pdf");
 
     downloadPayslipPDF(null, {
       employee: {
@@ -705,9 +700,11 @@ export default function PayslipPage() {
               <div className="flex items-center justify-between">
                 {/* Left: Logo */}
                 <div className="flex items-center">
-                  <img
-                    src={logo.src}
+                  <Image
+                    src={logo}
                     alt="Indyanet Logo"
+                    width={196}
+                    height={56}
                     className="h-14 w-auto object-contain"
                   />
                 </div>

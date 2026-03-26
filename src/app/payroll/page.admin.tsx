@@ -3,7 +3,7 @@
 
 import { Wallet, FileText, Users, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import PayrollTable from "./components/PayrollTable";
@@ -19,7 +19,7 @@ export default function PayrollAdminPage() {
     totalPaid: 0,
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     // if (process.env.NODE_ENV === "development")
     //   console.log("📡 Fetching /payroll/payslips");
 
@@ -78,13 +78,13 @@ export default function PayrollAdminPage() {
         totalPaid: data.length,
       });
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
     if (payrolls.length > 0) return; // prevent double StrictMode fetch
     fetchData();
-  }, [token, payrolls.length]);
+  }, [fetchData, token, payrolls.length]);
 
   const handleGeneratePayslip = () => router.push("/payroll/generate-payslip");
 

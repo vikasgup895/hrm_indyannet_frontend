@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Wallet, ShieldCheck, FileText, Coins, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
-import { useTheme } from "@/context/ThemeProvider";
 
 // Define TypeScript interfaces
 interface Insurance {
@@ -57,7 +56,13 @@ interface InsuranceDocument {
 
 export default function ECashPage() {
   const { token } = useAuth(); // Removed employeeId from destructuring
-  const { theme } = useTheme();
+  const getErrorMessage = (err: unknown, fallback: string) => {
+    if (typeof err === "object" && err !== null) {
+      const maybeResponse = (err as { response?: { data?: { message?: string } } }).response;
+      if (maybeResponse?.data?.message) return maybeResponse.data.message;
+    }
+    return fallback;
+  };
   const [insurance, setInsurance] = useState<Insurance | null>(null);
   const [loading, setLoading] = useState(true);
   const [convenienceCharges, setConvenienceCharges] = useState<
@@ -97,7 +102,11 @@ export default function ECashPage() {
           // 2) If decoding fails or no employeeId exists in the token, bail out.
           try {
             const payload = token.split(".")[1];
-            const decoded: any = JSON.parse(atob(payload));
+            const decoded = JSON.parse(atob(payload)) as {
+              employeeId?: string;
+              sub?: string;
+              employee?: { id?: string };
+            };
             const employeeIdFromToken =
               decoded.employeeId || decoded.sub || decoded.employee?.id;
 
@@ -109,12 +118,12 @@ export default function ECashPage() {
               // no employee id available from token
               setConvenienceCharges([]);
             }
-          } catch (err) {
+          } catch {
             // token decode failed or token malformed - do not log sensitive token data
             setConvenienceCharges([]);
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[E-Cash] Fetch Error:", err);
       } finally {
         setLoading(false);
@@ -124,11 +133,11 @@ export default function ECashPage() {
     const fetchConvenienceCharges = async (employeeId: string) => {
       setChargesLoading(true);
       try {
-        const chargesRes = await api.get(`/convenience/${employeeId}`, {
+        const chargesRes = await api.get(`/convenience/employee/${employeeId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setConvenienceCharges(chargesRes.data || []);
-      } catch (chargesError: any) {
+      } catch (chargesError: unknown) {
         console.error("[Convenience Charges] Fetch Error:", chargesError);
         // Fail silently for users; don't expose sensitive error details
       } finally {
@@ -164,11 +173,11 @@ export default function ECashPage() {
 
     setChargesLoading(true);
     try {
-      const chargesRes = await api.get(`/convenience/${currentEmployeeId}`, {
+      const chargesRes = await api.get(`/convenience/employee/${currentEmployeeId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setConvenienceCharges(chargesRes.data || []);
-    } catch (chargesError: any) {
+    } catch (chargesError: unknown) {
       console.error("[Convenience Charges] Refresh Error:", chargesError);
       // Do not expose error details to the UI
     } finally {
@@ -269,10 +278,10 @@ export default function ECashPage() {
       if (currentEmployeeId) {
         await refreshCharges();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setSubmitMessage({
         type: "error",
-        text: err.response?.data?.message || "Failed to submit charges",
+        text: getErrorMessage(err, "Failed to submit charges"),
       });
     } finally {
       setSubmitLoading(false);
@@ -334,8 +343,8 @@ export default function ECashPage() {
       if (currentEmployeeId) {
         await refreshCharges();
       }
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to update charge");
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, "Failed to update charge"));
     } finally {
       setEditLoading(false);
     }
@@ -359,8 +368,8 @@ export default function ECashPage() {
       if (currentEmployeeId) {
         await refreshCharges();
       }
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to delete charge");
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, "Failed to delete charge"));
     } finally {
       setDeleteLoading(null);
     }
@@ -636,7 +645,7 @@ export default function ECashPage() {
 
             <p className="text-xs text-[var(--text-muted)] bg-blue-50 dark:bg-blue-900/10 p-2 rounded">
               💡 Tip: Enter all your convenience charges here. HR will review
-              and approve them. Once approved, they'll be added to your salary
+              and approve them. Once approved, they&apos;ll be added to your salary
               slip.
             </p>
           </section>
@@ -805,7 +814,7 @@ export default function ECashPage() {
                       </td>
                     </tr>
                   ) : convenienceCharges.length > 0 ? (
-                    convenienceCharges.map((charge: any) => (
+                    convenienceCharges.map((charge: ConvenienceCharge) => (
                       <tr
                         key={charge.id}
                         className="border-t border-[var(--border-color)] hover:bg-[var(--hover-bg)] transition-colors"

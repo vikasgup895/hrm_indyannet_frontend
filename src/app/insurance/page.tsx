@@ -31,7 +31,6 @@ export default function InsuranceDashboard() {
     "employee" | "insurance"
   >("employee");
   const [docFilterEmployeeId, setDocFilterEmployeeId] = useState<string>("");
-  const [docFilterInsuranceId, setDocFilterInsuranceId] = useState<string>("");
 
   // File input ref to clear it
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -53,11 +52,11 @@ export default function InsuranceDashboard() {
           (e: any) => (e.status ?? "Active").toLowerCase() === "active"
         );
         setEmployees(emps);
-        // Initial documents list (unfiltered or filtered by employee if available)
-        await fetchDocuments({
-          employeeId: docFilterEmployeeId,
-          insuranceId: docFilterInsuranceId,
+        // Initial documents list (unfiltered)
+        const docsRes = await api.get("/insurance/docs", {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
+        setDocuments(docsRes.data || []);
       } catch (err) {
         console.error("❌ Error fetching insurance/employees:", err);
       } finally {
@@ -128,7 +127,6 @@ export default function InsuranceDashboard() {
         setDocFilterEmployeeId(selectedEmployee);
       } else {
         await fetchDocuments({ insuranceId });
-        setDocFilterInsuranceId(insuranceId);
       }
     } catch (err: any) {
       console.error("Upload failed:", err);
@@ -336,7 +334,6 @@ export default function InsuranceDashboard() {
               onChange={async (e) => {
                 const val = e.target.value;
                 setDocFilterEmployeeId(val);
-                setDocFilterInsuranceId("");
                 await fetchDocuments({ employeeId: val || undefined });
               }}
               className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--input-bg)] px-3 py-2"

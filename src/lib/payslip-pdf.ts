@@ -177,21 +177,27 @@ function buildPayslipHTML(data: PayslipData) {
     return fmt(new Date());
   })();
 
-  const earnings = data.earnings || {
-    Basic: data.gross ? Number(data.gross) * 0.7 : 0,
-    HRA: data.gross ? Number(data.gross) * 0.12 : 0,
-    "Special Allowance": data.gross ? Number(data.gross) * 0.06 : 0,
-    Bonus: 0,
-    Other: 0,
-  };
+  const earnings =
+    data.earnings ||
+    (() => {
+      const gross = Number(data.gross || 0);
+      const salary = Math.max(0, gross);
+      const basic = salary * 0.63;
+      const hra = salary * 0.252;
+      const special = salary * 0.118;
+
+      return {
+        Basic: basic,
+        HRA: hra,
+        "Special Allowance": special,
+        Bonus: 0,
+        Other: 0,
+      };
+    })();
 
   const deductions = data.deductions || {
-    "Leave Deduction": data.totalDeductions
-      ? Number(data.totalDeductions) * 0.93
-      : 0,
-    "Professional Tax": data.totalDeductions
-      ? Number(data.totalDeductions) * 0.07
-      : 0,
+    "Leave Deduction": 0,
+    "Professional Tax": 0,
     Other: 0,
   };
 

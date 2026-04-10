@@ -106,8 +106,6 @@ export const useAuth = create<AuthState>((set, get) => ({
   set: (token, role) => {
     try {
       if (typeof window !== "undefined") {
-        if (process.env.NODE_ENV === "development")
-          console.log("🪙 Saving token to localStorage:", token);
         localStorage.setItem("authToken", token);
         localStorage.setItem("role", role);
         Cookies.set("authToken", token, { expires: 1 });
@@ -116,8 +114,6 @@ export const useAuth = create<AuthState>((set, get) => ({
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       set({ token, role, isAuthenticated: true });
-      if (process.env.NODE_ENV === "development")
-        console.log("✅ Auth state updated:", { token, role });
     } catch (err) {
       console.error("❌ Error saving token:", err);
     }
@@ -133,13 +129,9 @@ export const useAuth = create<AuthState>((set, get) => ({
       const role = localStorage.getItem("role");
 
       if (token && role) {
-        if (process.env.NODE_ENV === "development")
-          console.log("🔁 Restored session:", { token, role });
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         set({ token, role, isAuthenticated: true });
       } else {
-        if (process.env.NODE_ENV === "development")
-          console.log("⚠️ No existing session found");
         set({ token: null, role: null, isAuthenticated: false });
       }
     } catch (err) {
@@ -149,8 +141,6 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   // ✅ Logout
   logout: () => {
-    if (process.env.NODE_ENV === "development")
-      console.log("🚪 Logging out and clearing auth data");
     localStorage.removeItem("authToken");
     localStorage.removeItem("role");
     Cookies.remove("authToken");

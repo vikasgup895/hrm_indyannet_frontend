@@ -56,6 +56,19 @@ const inr = (n: number) =>
     maximumFractionDigits: 2,
   }).format(n);
 
+const BASIC_PERCENT = 0.63;
+const HRA_PERCENT = 0.252;
+const SPECIAL_ALLOWANCE_PERCENT = 0.118;
+
+function computeSalaryAnalysis(totalSalary: number) {
+  const basic = Math.round(totalSalary * BASIC_PERCENT * 100) / 100;
+  const hra = Math.round(totalSalary * HRA_PERCENT * 100) / 100;
+  const specialAllowance =
+    Math.round(totalSalary * SPECIAL_ALLOWANCE_PERCENT * 100) / 100;
+
+  return { basic, hra, specialAllowance };
+}
+
 function toIndianWords(num: number): string {
   if (Number.isNaN(num)) return "";
   if (num === 0) return "Zero Rupees Only";
@@ -159,10 +172,8 @@ export default function PayslipPage() {
   const [payrollRun, setPayrollRun] = useState<any>(null);
 
   // inputs
-  const [earnings, setEarnings] = useState({
-    basic: 0,
-    hra: 0,
-    conveyance: 0, // Special Allowance
+  const [salaryInput, setSalaryInput] = useState("");
+  const [additionalEarnings, setAdditionalEarnings] = useState({
     bonus: 0,
     other: 0,
   });
@@ -171,11 +182,7 @@ export default function PayslipPage() {
     professionalTax: 0,
     other: 0,
   });
-  // Track input field values as strings to avoid leading zeros
-  const [earningsInput, setEarningsInput] = useState({
-    basic: "",
-    hra: "",
-    conveyance: "",
+  const [additionalEarningsInput, setAdditionalEarningsInput] = useState({
     bonus: "",
     other: "",
   });
@@ -240,14 +247,17 @@ export default function PayslipPage() {
   }, [fetchEmployee, selectedEmployeeId]);
 
   /* ───────────────────────────── Calculations ───────────────────────────── */
+  const enteredSalary = useMemo(() => {
+    const parsed = Number(salaryInput);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [salaryInput]);
+  const salaryAnalysis = useMemo(
+    () => computeSalaryAnalysis(enteredSalary),
+    [enteredSalary]
+  );
   const grossEarnings = useMemo(
-    () =>
-      earnings.basic +
-      earnings.hra +
-      earnings.conveyance +
-      earnings.bonus +
-      earnings.other,
-    [earnings]
+    () => enteredSalary + additionalEarnings.bonus + additionalEarnings.other,
+    [enteredSalary, additionalEarnings]
   );
   const totalDeductions = useMemo(
     () =>
@@ -259,14 +269,6 @@ export default function PayslipPage() {
     [grossEarnings, totalDeductions]
   );
 
-  const setEarn = (key: keyof typeof earnings, v: number | string) => {
-    const strValue = String(v);
-    setEarningsInput((s) => ({ ...s, [key]: strValue }));
-    const numValue = strValue === "" ? 0 : Number(strValue);
-    if (!isNaN(numValue)) {
-      setEarnings((s) => ({ ...s, [key]: numValue }));
-    }
-  };
   const setDed = (key: keyof typeof deductions, v: number | string) => {
     const strValue = String(v);
     setDeductionsInput((s) => ({ ...s, [key]: strValue }));
@@ -276,11 +278,28 @@ export default function PayslipPage() {
     }
   };
 
+  const setAdditionalEarn = (
+    key: keyof typeof additionalEarnings,
+    v: number | string
+  ) => {
+    const strValue = String(v);
+    setAdditionalEarningsInput((s) => ({ ...s, [key]: strValue }));
+    const numValue = strValue === "" ? 0 : Number(strValue);
+    if (!isNaN(numValue)) {
+      setAdditionalEarnings((s) => ({ ...s, [key]: numValue }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedEmployeeId) {
       alert("Please select an employee first.");
+      return;
+    }
+
+    if (enteredSalary <= 0) {
+      alert("Please enter a valid total salary.");
       return;
     }
 
@@ -398,15 +417,16 @@ export default function PayslipPage() {
         employeeId: selectedEmployeeId,
         runId: run.id,
         gross: grossEarnings,
+        salary: enteredSalary,
         deductions: totalDeductions,
         net: netPay,
         currency: "INR",
 
-        basic: earnings.basic,
-        hra: earnings.hra,
-        conveyance: earnings.conveyance,
-        bonus: earnings.bonus,
-        other: earnings.other,
+        basic: salaryAnalysis.basic,
+        hra: salaryAnalysis.hra,
+        conveyance: salaryAnalysis.specialAllowance,
+        bonus: additionalEarnings.bonus,
+        other: additionalEarnings.other,
         leaveDeduction: deductions.leaveDeduction,
         professionalTax: deductions.professionalTax,
         otherDeduction: deductions.other,
@@ -504,11 +524,11 @@ export default function PayslipPage() {
       payDate: payrollRun?.payDate || new Date().toISOString(),
       // PF and UAN intentionally hidden/commented for future use
       earnings: {
-        Basic: earnings.basic,
-        HRA: earnings.hra,
-        "Special Allowance": earnings.conveyance,
-        Bonus: earnings.bonus,
-        Other: earnings.other,
+        Basic: salaryAnalysis.basic,
+        HRA: salaryAnalysis.hra,
+        "Special Allowance": salaryAnalysis.specialAllowance,
+        Bonus: additionalEarnings.bonus,
+        Other: additionalEarnings.other,
       },
       deductions: {
         "Leave Deduction": deductions.leaveDeduction,
@@ -604,32 +624,71 @@ export default function PayslipPage() {
             </label>
           </div>
 
-          {/* Earnings / Deductions */}
+          {/* Salary / Deductions */}
           <div className="grid md:grid-cols-2 gap-6 mt-6">
             <div>
-              <h3 className="font-semibold mb-2">Earnings</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {(
-                  [
-                    ["basic", "Basic"],
-                    ["hra", "HRA"],
-                    ["conveyance", "Special Allowance"],
-                    ["bonus", "Bonus"],
-                    ["other", "Other"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label key={key} className="text-sm">
-                    <span className="text-[var(--text-muted)]">{label}</span>
+              <h3 className="font-semibold mb-2">Salary</h3>
+              <div className="grid grid-cols-1 gap-3">
+                <label className="text-sm">
+                  <span className="text-(--text-muted)">Salary</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-(--border-color) bg-(--card-bg) [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    placeholder="Enter total salary ..."
+                    value={salaryInput}
+                    onChange={(e) => setSalaryInput(e.target.value)}
+                  />
+                </label>
+                <div className="grid grid-cols-1 gap-3 rounded-lg border border-(--border-color) p-3 bg-(--card-bg)">
+                  <label className="text-sm">
+                    <span className="text-(--text-muted)">Basic (63%)</span>
                     <input
-                      type="number"
-                      inputMode="decimal"
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)]"
-                      placeholder="Enter amount ..."
-                      value={earningsInput[key]}
-                      onChange={(e) => setEarn(key, e.target.value)}
+                      type="text"
+                      readOnly
+                      value={inr(salaryAnalysis.basic)}
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-(--border-color) bg-gray-100 text-gray-700"
                     />
                   </label>
-                ))}
+                  <label className="text-sm">
+                    <span className="text-(--text-muted)">HRA (25.2%)</span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={inr(salaryAnalysis.hra)}
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-(--border-color) bg-gray-100 text-gray-700"
+                    />
+                  </label>
+                  <label className="text-sm">
+                    <span className="text-(--text-muted)">Special Allowance (11.8%)</span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={inr(salaryAnalysis.specialAllowance)}
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-(--border-color) bg-gray-100 text-gray-700"
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    [
+                      ["bonus", "Bonus"],
+                      ["other", "Others"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={key} className="text-sm">
+                      <span className="text-(--text-muted)">{label}</span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        className="mt-1 w-full px-3 py-2 rounded-lg border border-(--border-color) bg-(--card-bg) [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        placeholder="Enter amount ..."
+                        value={additionalEarningsInput[key]}
+                        onChange={(e) => setAdditionalEarn(key, e.target.value)}
+                      />
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
             <div>
@@ -647,7 +706,7 @@ export default function PayslipPage() {
                     <input
                       type="number"
                       inputMode="decimal"
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-(--border-color) bg-(--card-bg)"
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-(--border-color) bg-(--card-bg) [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       placeholder="Enter amount ..."
                       value={deductionsInput[key]}
                       onChange={(e) => setDed(key, e.target.value)}
@@ -782,11 +841,14 @@ export default function PayslipPage() {
               </div>
               <div className="grid grid-cols-2">
                 <div className="border-r border-gray-200">
-                  <Row label="Basic" amount={earnings.basic} />
-                  <Row label="HRA" amount={earnings.hra} />
-                  <Row label="Special Allowance" amount={earnings.conveyance} />
-                  <Row label="Bonus" amount={earnings.bonus} />
-                  <Row label="Other" amount={earnings.other} />
+                  <Row label="Basic" amount={salaryAnalysis.basic} />
+                  <Row label="HRA" amount={salaryAnalysis.hra} />
+                  <Row
+                    label="Special Allowance"
+                    amount={salaryAnalysis.specialAllowance}
+                  />
+                  <Row label="Bonus" amount={additionalEarnings.bonus} />
+                  <Row label="Others" amount={additionalEarnings.other} />
                   <Row label="Gross Earnings" amount={grossEarnings} bold />
                 </div>
                 <div>

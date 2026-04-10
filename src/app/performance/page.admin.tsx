@@ -113,6 +113,11 @@ function getErrorMessage(error: unknown, fallback: string) {
   return message || fallback;
 }
 
+function formatRating(value?: AppraisalRating) {
+  if (!value) return "-";
+  return value.replaceAll("_", " ");
+}
+
 export default function PerformanceAdminPage() {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -256,7 +261,11 @@ export default function PerformanceAdminPage() {
 
   const reopen = async () => {
     if (!selectedId) return;
-    const notes = prompt("Reason to reopen this appraisal") || "Reopened by admin";
+    const notes = prompt("Reason to reopen this appraisal");
+
+    if (notes === null) {
+      return;
+    }
 
     try {
       setActionBusy(true);
@@ -541,10 +550,35 @@ export default function PerformanceAdminPage() {
                   <StatusChip status={detail.status} />
                 </div>
                 <p>{detail.employee.workEmail}</p>
+                <p className="text-(--text-muted) text-xs mt-1">
+                  Designation: {detail.employee.designation || "-"} | Department: {detail.employee.department || "-"}
+                </p>
                 <p className="text-(--text-muted) text-xs mt-1">{detail.cycle.name}</p>
               </div>
 
+              <div className="rounded-lg border border-(--border-color) bg-(--background) p-3 text-sm space-y-3">
+                <p className="font-semibold">Ratings and Comments</p>
+                <div className="grid gap-2 md:grid-cols-3">
+                  <div className="rounded-md border border-(--border-color) bg-(--card-bg) p-2">
+                    <p className="text-xs text-(--text-muted)">Job Role and Skills</p>
+                    <p className="font-medium">{formatRating(detail.jobRoleSkillsRating)}</p>
+                  </div>
+                  <div className="rounded-md border border-(--border-color) bg-(--card-bg) p-2">
+                    <p className="text-xs text-(--text-muted)">Work Quality</p>
+                    <p className="font-medium">{formatRating(detail.workQualityRating)}</p>
+                  </div>
+                  <div className="rounded-md border border-(--border-color) bg-(--card-bg) p-2">
+                    <p className="text-xs text-(--text-muted)">Overall Performance</p>
+                    <p className="font-medium">{formatRating(detail.overallRating)}</p>
+                  </div>
+                </div>
+                <p><strong>Job Role and Skills comments:</strong> {detail.jobRoleSkillsComments || "-"}</p>
+                <p><strong>Work Quality comments:</strong> {detail.workQualityComments || "-"}</p>
+                <p><strong>Overall comments:</strong> {detail.overallComments || "-"}</p>
+              </div>
+
               <div className="rounded-lg border border-(--border-color) bg-(--background) p-3 text-sm space-y-2">
+                <p className="font-semibold">Achievements and Improvement Summary</p>
                 <p><strong>Achievements:</strong> {detail.achievements || "-"}</p>
                 <p><strong>Areas for improvement:</strong> {detail.areasForImprovement || "-"}</p>
                 <p><strong>Challenges:</strong> {detail.employeeChallenges || "-"}</p>
@@ -553,15 +587,35 @@ export default function PerformanceAdminPage() {
 
               <div className="rounded-lg border border-(--border-color) bg-(--background) p-3 text-sm">
                 <p className="font-semibold mb-2 inline-flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" /> Goals
+                  <ClipboardList className="h-4 w-4" /> Goals for Next Year
                 </p>
                 {detail.goals.length === 0 ? (
                   <p className="text-(--text-muted)">No goals added.</p>
                 ) : (
-                  <ul className="list-disc pl-5 space-y-1">
+                  <ul className="space-y-2">
                     {detail.goals.map((goal, index) => (
-                      <li key={`g-${index}`}>
-                        {goal.title} {goal.metric ? `(${goal.metric})` : ""}
+                      <li key={`g-${index}`} className="rounded-md border border-(--border-color) bg-(--card-bg) p-2">
+                        <p><strong>Goal:</strong> {goal.title || "-"}</p>
+                        <p><strong>Success metric:</strong> {goal.metric || "-"}</p>
+                        <p><strong>Target date:</strong> {goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : "-"}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-(--border-color) bg-(--background) p-3 text-sm">
+                <p className="font-semibold mb-2">Development Plan</p>
+                {detail.developmentPlans.length === 0 ? (
+                  <p className="text-(--text-muted)">No development plan added.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {detail.developmentPlans.map((plan, index) => (
+                      <li key={`dp-${index}`} className="rounded-md border border-(--border-color) bg-(--card-bg) p-2">
+                        <p><strong>Goal:</strong> {plan.goal || "-"}</p>
+                        <p><strong>Activities:</strong> {plan.activities || "-"}</p>
+                        <p><strong>Timeline:</strong> {plan.timeline || "-"}</p>
+                        <p><strong>Resources:</strong> {plan.resources || "-"}</p>
                       </li>
                     ))}
                   </ul>
@@ -613,13 +667,13 @@ export default function PerformanceAdminPage() {
                   <button
                     onClick={verify}
                     disabled={actionBusy || detail.status !== "IN_REVIEW"}
-                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/60 px-3 py-2 text-sm text-white disabled:opacity-50"
                   >
                     <CheckCircle2 className="h-4 w-4" /> Verify
                   </button>
                   <button
                     onClick={reopen}
-                    disabled={actionBusy || detail.status === "REOPENED" || detail.status === "CLOSED"}
+                    disabled={actionBusy || detail.status === "REOPENED" || detail.status === "DRAFT"}
                     className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-sm text-white disabled:opacity-50"
                   >
                     <RotateCcw className="h-4 w-4" /> Reopen

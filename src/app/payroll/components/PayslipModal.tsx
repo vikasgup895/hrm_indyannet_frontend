@@ -54,7 +54,9 @@ export default function PayslipModal({
     new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-    }).format(n);
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.round(Number(n) || 0));
 
   // 🧾 Download PDF (Full Layout)
   // 🧾 Download PDF (Full Layout)
@@ -398,7 +400,9 @@ function Row({ label, value }: { label: string; value: number }) {
         {new Intl.NumberFormat("en-IN", {
           style: "currency",
           currency: "INR",
-        }).format(value)}
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(Math.round(Number(value) || 0))}
       </span>
     </div>
   );

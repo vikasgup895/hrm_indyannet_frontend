@@ -53,8 +53,9 @@ function formatINR(n = 0) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number(n) || 0);
+  }).format(Math.round(Number(n) || 0));
 }
 
 function toIndianWords(num: number) {

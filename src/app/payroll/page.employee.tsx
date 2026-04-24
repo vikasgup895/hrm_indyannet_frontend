@@ -7,6 +7,14 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
 import PayrollCard from "./components/PayrollCard";
 
+const formatINR = (amount: number | string) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.round(Number(amount) || 0));
+
 export default function PayrollEmployeePage() {
   const { token } = useAuth();
   const [payslips, setPayslips] = useState<any[]>([]);
@@ -154,15 +162,7 @@ export default function PayrollEmployeePage() {
           icon={<Wallet className="text-purple-500" size={20} />}
           title="Last Net Pay"
           value={
-            summary.net !== "—"
-              ? `${
-                  summary.currency === "USD"
-                    ? "$"
-                    : summary.currency === "EUR"
-                    ? "€"
-                    : "₹"
-                } ${summary.net}`
-              : "—"
+            summary.net !== "—" ? formatINR(summary.net) : "—"
           }
         />
       </section>
@@ -218,9 +218,11 @@ export default function PayrollEmployeePage() {
                         return `${fmt(s)} to ${fmt(e)}`;
                       })()}
                     </td>
-                    <td className="p-3">{p.gross}</td>
-                    <td className="p-3 text-amber-500">{p.deductions || 0}</td>
-                    <td className="p-3 text-green-500">{p.net}</td>
+                    <td className="p-3">{formatINR(p.gross)}</td>
+                    <td className="p-3 text-amber-500">
+                      {formatINR(p.deductions || 0)}
+                    </td>
+                    <td className="p-3 text-green-500">{formatINR(p.net)}</td>
                     <td className="p-3 ">
                       <div className="w-full flex justify-center">
                         <button

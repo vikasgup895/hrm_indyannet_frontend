@@ -53,8 +53,9 @@ const inr = (n: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(n);
+  }).format(Math.round(Number(n) || 0));
 
 const BASIC_PERCENT = 0.63;
 const HRA_PERCENT = 0.252;
@@ -957,7 +958,9 @@ function Row({
     new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-    }).format(n);
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.round(Number(n) || 0));
   return (
     <div
       className={`grid grid-cols-2 text-sm ${

@@ -108,8 +108,9 @@ export default function PayrollTable({
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(numAmount);
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.round(Number(numAmount) || 0));
   };
 
   return (

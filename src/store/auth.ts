@@ -108,7 +108,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       if (typeof window !== "undefined") {
         localStorage.setItem("authToken", token);
         localStorage.setItem("role", role);
-        Cookies.set("authToken", token, { expires: 1 });
+        Cookies.set("authToken", token, { expires: 7 });
       }
 
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
